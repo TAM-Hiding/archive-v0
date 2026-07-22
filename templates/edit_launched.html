@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Edit launched - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        h1 {
+            color: #ffd166;
+        }
+
+        a {
+            color: #7bdff2;
+        }
+
+        .path {
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>Editor launched</h1>
+
+    <p>You should now have <strong>gedit</strong> open for:</p>
+    <p class="path">{{ note.path }}</p>
+
+    <p>After saving your changes, go back and click <strong>Reload</strong> in The Archive™.</p>
+
+    <p>
+        <a href="/">← Back to search</a>
+        &nbsp; | &nbsp;
+        <a href="/note/{{ note.id }}">Back to note</a>
+    </p>
+</body>
+</html>

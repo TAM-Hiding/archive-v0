@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Note - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.15rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .label {
+            color: #7bdff2;
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+            display: block;
+        }
+
+        .optional {
+            color: #999;
+            font-weight: normal;
+            font-size: 0.9em;
+        }
+
+        .helper {
+            color: #bbb;
+            font-size: 0.95rem;
+            margin-top: 0.35rem;
+            margin-bottom: 0.75rem;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 0.7rem;
+            font-size: 1.05rem;
+            font-family: Arial, sans-serif;
+            border: none;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background: #2a2a2a;
+            color: #f0f0f0;
+        }
+
+        input {
+            font-weight: bold;
+            letter-spacing: 0.03em;
+        }
+
+        textarea {
+            min-height: 320px;
+            resize: vertical;
+            line-height: 1.45;
+            font-weight: normal;
+            white-space: pre-wrap;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #7bdff2;
+        }
+
+        .field {
+            margin-bottom: 1.2rem;
+        }
+
+        .button-row {
+            margin-top: 1.5rem;
+        }
+
+        button,
+        .button-link {
+            display: inline-block;
+            padding: 0.7rem 1rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-right: 0.6rem;
+        }
+
+        button {
+            background: #ffd166;
+            color: #111;
+        }
+
+        .button-link {
+            background: #7bdff2;
+            color: #111;
+        }
+
+        .meta {
+            color: #bbb;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        .path {
+            color: #888;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Note</h1>
+
+        <div class="meta">
+            <strong>Editing:</strong>
+            <span class="path">{{ note.path }}</span>
+        </div>
+
+        <form method="post">
+            <div class="field">
+                <label class="label" for="title">Title</label>
+                <input id="title" name="title" value="{{ note.title }}" required>
+            </div>
+
+            <div class="field">
+                <label class="label" for="tags">Tags (comma separated)</label>
+                <input id="tags" name="tags" value="{{ note.tags | join(', ') }}">
+            </div>
+
+            <div class="field">
+                <label class="label" for="aliases">
+                    Nicknames / alternate names <span class="optional">(OPTIONAL)</span>
+                </label>
+                <input
+                    id="aliases"
+                    name="aliases"
+                    value="{{ note.aliases | join(', ') }}"
+                    placeholder="How would I search for this?"
+                >
+                <div class="helper">
+                    Other names, slang, or shorthand for the same thing.
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label" for="body">Body</label>
+                <textarea id="body" name="body" required>{{ note.body }}</textarea>
+            </div>
+
+            <div class="button-row">
+                <button type="submit">Save Changes</button>
+                <a href="/note/{{ note.id }}" class="button-link">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

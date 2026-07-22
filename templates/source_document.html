@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+    <title>Source Document - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.15rem;
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .doc-subtitle {
+            color: #bbb;
+            margin-bottom: 1.4rem;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .button-link {
+            display: inline-block;
+            padding: 0.6rem 0.8rem;
+            background: #7bdff2;
+            color: #111;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .chunk-block {
+            background: #2a2a2a;
+            margin-top: 1rem;
+            padding: 1.1rem 1.2rem;
+            border-radius: 8px;
+        }
+
+        .chunk-block.current {
+            border: 2px solid #ffd166;
+            box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.25);
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .header-left {
+            min-width: 0;
+        }
+
+        .chunk-label {
+            color: #7bdff2;
+            font-weight: bold;
+            margin-bottom: 0.2rem;
+        }
+
+        .chunk-title {
+            color: #bbb;
+            font-size: 0.95rem;
+        }
+
+        .chunk-body {
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .chunk-actions {
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+
+        .chunk-actions a {
+            color: #7bdff2;
+            text-decoration: none;
+            margin-left: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Source Document</h1>
+    <div class="doc-subtitle">{{ document.title }}</div>
+
+    <div class="button-row">
+        <a href="/" class="button-link">Back to Search</a>
+
+        {% if document.mode == "structural_only" %}
+            <a href="/curator/document/{{ document.source_doc_id }}" class="button-link">Document Details</a>
+            <a href="/curator/document/{{ document.source_doc_id }}/structure" class="button-link">Open Structure View</a>
+        {% endif %}
+    </div>
+
+    {% if document.mode == "structural_only" %}
+        <div class="chunk-block current">
+            <div class="header-row">
+                <div class="header-left">
+                    <div class="chunk-label">Structural-Only Document</div>
+                    <div class="chunk-title">{{ document.source_filename }}</div>
+                </div>
+            </div>
+
+            <div class="chunk-body">
+    This document is stored in structural-only mode.
+
+    Persistent chunk notes were not generated for this document.
+
+    Pages: {{ document.page_count }}
+    Structural entries: {{ document.chunk_count_estimate }}
+    Source file: {{ document.source_filename }}
+
+    Use Structure View to browse the document and open transient reconstructed segments.
+            </div>
+        </div>
+    {% else %}
+        {% for chunk in document.chunks %}
+            <div class="chunk-block{% if chunk.is_current %} current{% endif %}">
+                <div class="header-row">
+                    <div class="header-left">
+                        <div class="chunk-label">Chunk {{ chunk.chunk_index }}</div>
+                        <div class="chunk-title">{{ chunk.note.title }}</div>
+                    </div>
+
+                    <div class="chunk-actions">
+                        <a href="/note/{{ chunk.note.id }}">[Open Note]</a>
+                        <a href="/context/{{ chunk.note.id }}">[Context]</a>
+                    </div>
+                </div>
+
+                <div class="chunk-body">{{ chunk.note.body }}</div>
+            </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+</body>
+</html>

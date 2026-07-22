@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+<head>
+    <title>Curator Documents - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .subtitle {
+            color: #bbb;
+            margin-bottom: 1.4rem;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.4rem;
+        }
+
+        .button-link {
+            display: inline-block;
+            padding: 0.6rem 0.8rem;
+            background: #7bdff2;
+            color: #111;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .doc-card {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 1rem 1.1rem;
+            margin-top: 1rem;
+        }
+
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .doc-title {
+            color: #ffd166;
+            font-weight: bold;
+            font-size: 1.15rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .doc-subtitle {
+            color: #bbb;
+            font-size: 0.96rem;
+        }
+
+        .doc-actions {
+            white-space: nowrap;
+            font-size: 0.95rem;
+        }
+
+        .doc-actions a {
+            color: #7bdff2;
+            text-decoration: none;
+            margin-left: 0.9rem;
+        }
+
+        .doc-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.6rem 1rem;
+        }
+
+        .meta-item {
+            color: #d0d0d0;
+            font-size: 0.96rem;
+            line-height: 1.35;
+        }
+
+        .meta-label {
+            color: #7bdff2;
+            font-weight: bold;
+        }
+
+        .empty-state {
+            margin-top: 1rem;
+            color: #aaa;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="button-row">
+        <a href="/" class="button-link">Back to Search</a>
+        <a href="/curator" class="button-link">Back to Curator</a>
+    </div>
+
+    <h1>Curator - Ingested Documents</h1>
+    <div class="subtitle">
+        Inspect ingested source records and manage generated output.
+    </div>
+
+    {% if documents %}
+        {% for doc in documents %}
+            <div class="doc-card">
+                <div class="doc-header">
+                    <div>
+                        <div class="doc-title">{{ doc.title }}</div>
+                        <div class="doc-subtitle">{{ doc.source_filename }}</div>
+                    </div>
+
+                    <div class="doc-actions">
+                            <a href="/curator/document/{{ doc.doc_id }}">[Metadata]</a>
+                    </div>
+                </div>
+
+                <div class="doc-meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">Doc ID:</span>
+                        {{ doc.doc_id }}
+                    </div>
+
+                    <div class="meta-item">
+                        <span class="meta-label">Category:</span>
+                        {{ doc.category_path }}
+                    </div>
+
+                    <div class="meta-item">
+                        <span class="meta-label">Status:</span>
+                        {{ doc.status }}
+                    </div>
+
+                    <div class="meta-item">
+                        <span class="meta-label">Chunks:</span>
+                        {{ doc.chunk_count }}
+                    </div>
+
+                    <div class="meta-item">
+                        <span class="meta-label">Pages:</span>
+                        {{ doc.page_count }}
+                    </div>
+                    
+                    <div class="meta-item">
+                        <span class="meta-label">Storage Mode:</span>
+                        {{ doc.chunk_storage_mode }}
+                    </div>
+
+                    <div class="meta-item">
+                        <span class="meta-label">Chunk Estimate:</span>
+                        {{ doc.chunk_count_estimate }}
+                    </div>
+
+                    <div class="meta-item">
+                        <span class="meta-label">Structural Index Entries:</span>
+                        {{ doc.structural_index_entry_count }}
+                    </div>
+
+                    <div class="meta-item">
+                        <span class="meta-label">Generated Output:</span>
+                        {% if doc.has_generated_output %}Present{% else %}Missing{% endif %}
+                    </div>
+
+                    <div class="meta-item">
+                        <span class="meta-label">Updated:</span>
+                        {{ doc.updated_at }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">No ingested documents found.</div>
+    {% endif %}
+</div>
+
+</body>
+</html>

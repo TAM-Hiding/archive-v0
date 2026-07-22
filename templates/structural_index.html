@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+    <title>Structure View - The Archive™</title>
+    <style>
+        body { font-family: Arial; background: #1e1e1e; color: #f0f0f0; padding: 2rem; font-size: 1.1rem; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { color: #ffd166; margin-bottom: 0.35rem; }
+        .subtitle { color: #bbb; margin-bottom: 1.4rem; }
+        .button-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
+        .button-link { display: inline-block; padding: 0.6rem 0.8rem; background: #7bdff2; color: #111; text-decoration: none; border-radius: 4px; font-weight: bold; }
+        .entry { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 1rem; margin-bottom: 0.9rem; }
+        .entry-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+        .entry-title { color: #ffd166; font-weight: bold; }
+        .entry-meta { color: #aaa; font-size: 0.95rem; margin-top: 0.25rem; }
+        .preview { margin-top: 0.7rem; white-space: pre-wrap; line-height: 1.45; color: #ddd; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="button-row">
+        <a href="/" class="button-link">Back to Search</a>
+        <a href="/curator/document/{{ document.document.doc_id }}" class="button-link">Back to Document</a>
+    </div>
+
+    <h1>Structure View</h1>
+    <div class="subtitle">
+        {{ document.document.title }} — {{ document.entries|length }} structural entries
+    </div>
+
+    {% for entry in document.entries %}
+    <div class="entry">
+        <div class="entry-head">
+            <div>
+                <div class="entry-title">
+                    Entry {{ entry.entry_index }}
+                    {% if entry.section_heading %} — {{ entry.section_heading }}{% endif %}
+                </div>
+                <div class="entry-meta">
+                    Chunk {{ entry.chunk_index }} |
+                    Pages {{ entry.page_start }}–{{ entry.page_end }} |
+                    {{ entry.char_count }} chars
+                </div>
+            </div>
+
+            <a href="/curator/document/{{ document.document.doc_id }}/structure/{{ entry.entry_index }}" class="button-link">Open Segment</a>
+        </div>
+
+        <div class="preview">{{ entry.preview }}</div>
+    </div>
+    {% endfor %}
+</div>
+</body>
+</html>

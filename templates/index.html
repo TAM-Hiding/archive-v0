@@ -1,0 +1,265 @@
+<!doctype html>
+<html>
+<head>
+    <title>The Archive™</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.15rem; /* global scale up */
+        }
+
+        /* centered layout */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        /* headings */
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+        }
+
+        /* inputs */
+        input, select {
+            padding: 0.6rem;
+            font-size: 1.1rem;
+            font-weight: bold; /* <<<< makes search bar display typed text in bold, YOU'RE WELCOME. >>>> */
+            letter-spacing: 0.03rem; /* HELPS WITH READABILITY (1!il issue) */
+        }
+
+        input {
+            width: 65%;
+        }
+
+        button {
+            padding: 0.6rem 0.8rem;
+            font-size: 1.1rem;
+        }
+
+        /* results cards */
+        .result {
+            background: #2a2a2a;
+            margin-top: 1.2rem;
+            padding: 1.2rem;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+        }
+
+        /* title */
+        .title {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #ffd166;
+        }
+
+        .result-main {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .preview-block {
+            color: #f0f0f0;
+            line-height: 1.45;
+            min-width: 0;
+        }
+
+        .preview-label {
+            color: #ffd166;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 0.35rem;
+        }
+
+        .meta-panel {
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 0.8rem 0.9rem;
+            background: #242424;
+        }
+
+        .meta-row {
+            margin-top: 0.35rem;
+            font-size: 0.96rem;
+            color: #cfcfcf;
+            line-height: 1.35;
+        }
+
+        .meta-row:first-child {
+            margin-top: 0;
+        }
+
+        .meta-label {
+            color: #7bdff2;
+            font-weight: bold;
+        }
+
+        .meta-value {
+            color: #cfcfcf;
+        }
+
+        .meta-panel .category-value {
+            color: #cfcfcf;
+            font-size: 0.96rem;
+        }
+
+        /* highlight */
+        .highlight {
+            background: #ffd166;
+            color: #111;
+            padding: 0 0.2rem;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        /* SUBTLE GLOW SETTING */
+        input:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #7bdff2;
+        }
+        
+        .button-link {
+            display: inline-block;
+            padding: 0.6rem 0.8rem;
+            background: #7bdff2;
+            color: #111;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 760px) {
+            .result-main {
+                grid-template-columns: 1fr;
+            }
+
+            .meta-panel {
+                width: 100%;
+            }
+
+            input {
+                width: 100%;
+                box-sizing: border-box;
+                margin-bottom: 0.5rem;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>The Archive™</h1>
+
+<form method="post">
+    <input name="query" value="{{ query }}" placeholder="Search...">
+
+    <select name="scope">
+        <option value="all" {% if scope == "all" %}selected{% endif %}>All</option>
+        <option value="notes" {% if scope == "notes" %}selected{% endif %}>Notes</option>
+        <option value="reference" {% if scope == "reference" %}selected{% endif %}>Reference</option>
+    </select>
+
+    <button type="submit" name="action" value="search">Search</button>
+    <button type="submit" name="action" value="reload">Reload</button>
+</form>
+
+<div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
+    <a href="/add" class="button-link">Add Note</a>
+    <a href="/curator" class="button-link">Curator</a>
+</div>
+{% if message %}
+    <p style="color: #7bdff2; font-weight: bold;">{{ message }}</p>
+{% endif %}
+
+{% if results %}
+    <h2>Results</h2>
+
+    {% for score, note, preview in results %}
+        <div class="result">
+            <div class="title">
+                <a href="/note/{{ note.id }}" style="color: #ffd166; text-decoration: none;">
+                    {{ note.title }}
+                </a>
+
+                {% if note.is_generated and note.meta.chunk_storage_mode == "structural_only" %}
+                    <span style="margin-left: 1rem;">
+                        <a href="/curator/document/{{ note.meta.source_doc_id }}" style="color: #7bdff2; text-decoration: none;">[Details]</a>
+                    </span>
+
+                    <span style="margin-left: 0.75rem;">
+                        <a href="/curator/document/{{ note.meta.source_doc_id }}/structure" style="color: #7bdff2; text-decoration: none;">[Structure]</a>
+                    </span>
+
+                    <span style="margin-left: 0.75rem;">
+                        <a href="/source/{{ note.id }}" style="color: #7bdff2; text-decoration: none;">[Source Overview]</a>
+                    </span>
+
+                {% else %}
+                    <span style="margin-left: 1rem;">
+                        <a href="/edit/{{ note.id }}" style="color: #7bdff2; text-decoration: none;">[Edit]</a>
+                    </span>
+
+                    {% if note.is_generated %}
+                        <span style="margin-left: 0.75rem;">
+                            <a href="/context/{{ note.id }}" style="color: #7bdff2; text-decoration: none;">[Context]</a>
+                        </span>
+
+                        <span style="margin-left: 0.75rem;">
+                            <a href="/source/{{ note.id }}" style="color: #7bdff2; text-decoration: none;">[Source]</a>
+                        </span>
+                    {% endif %}
+                {% endif %}
+
+            </div>
+
+            <div class="result-main">
+                <div class="preview-block">
+                    <div class="preview-label">Preview</div>
+                    <div>{{ preview|safe }}</div>
+                </div>
+
+                <div class="meta-panel">
+                    <div class="meta-row">
+                        <span class="meta-label">Tags:</span>
+                        <span class="meta-value">{{ note.tags_display }}</span>
+                    </div>
+
+                    <div class="meta-row">
+                        <span class="meta-label">Score:</span>
+                        <span class="meta-value">{{ score }}</span>
+                    </div>
+
+                    <div class="meta-row">
+                        <span class="meta-label">Category:</span>
+                        <span class="category-value">{{ note.category }}</span>
+                    </div>
+
+                    {% if note.aliases %}
+                        <div class="meta-row">
+                            <span class="meta-label">Aliases:</span>
+                            <span class="meta-value">{{ note.aliases_display }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+
+{% elif query %}
+    <p>No matches found.</p>
+{% endif %}
+
+</div>
+
+</body>
+</html>

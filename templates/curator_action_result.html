@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+    <title>{{ title }} - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .status-line {
+            margin-bottom: 1.2rem;
+            font-weight: bold;
+        }
+
+        .status-ok {
+            color: #92e6a7;
+        }
+
+        .status-fail {
+            color: #ff8c8c;
+        }
+
+        .panel {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 1rem 1.1rem;
+            margin-top: 1rem;
+        }
+
+        .panel-title {
+            color: #ffd166;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .meta-item {
+            color: #d0d0d0;
+            line-height: 1.45;
+            margin-top: 0.4rem;
+        }
+
+        .meta-label {
+            color: #7bdff2;
+            font-weight: bold;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1.4rem;
+        }
+
+        .button-link {
+            display: inline-block;
+            padding: 0.65rem 0.9rem;
+            border-radius: 4px;
+            font-weight: bold;
+            text-decoration: none;
+            background: #7bdff2;
+            color: #111;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>{{ title }}</h1>
+
+    <div class="status-line {% if result.ok %}status-ok{% else %}status-fail{% endif %}">
+        {{ result.message }}
+    </div>
+
+    {% if document %}
+        <div class="panel">
+            <div class="panel-title">Document</div>
+
+            <div class="meta-item">
+                <span class="meta-label">Title:</span>
+                {{ document.title }}
+            </div>
+
+            <div class="meta-item">
+                <span class="meta-label">Source Filename:</span>
+                {{ document.source_filename }}
+            </div>
+
+            <div class="meta-item">
+                <span class="meta-label">Doc ID:</span>
+                {{ document.doc_id }}
+            </div>
+
+            <div class="meta-item">
+                <span class="meta-label">Category:</span>
+                {{ document.category_path }}
+            </div>
+
+            <div class="meta-item">
+                <span class="meta-label">Generated Output:</span>
+                {% if document.has_generated_output %}Present{% else %}Missing{% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="button-row">
+        {% if document %}
+            <a href="/curator/document/{{ document.doc_id }}" class="button-link">Back to Document</a>
+        {% endif %}
+        <a href="/curator/documents" class="button-link">Back to Documents</a>
+        <a href="/curator" class="button-link">Back to Curator</a>
+    </div>
+</div>
+
+</body>
+</html>

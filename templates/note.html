@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ note.title }} - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.15rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .label {
+            color: #7bdff2;
+            font-weight: bold;
+        }
+
+        .category-value {
+            color: #ccc;
+        }
+
+        .note-path {
+            color: #888;
+            font-size: 0.95rem;
+            word-break: break-word;
+        }
+
+        .body {
+            margin-top: 1.5rem;
+            background: #2a2a2a;
+            padding: 1rem;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        a {
+            color: #7bdff2;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .top-bar {
+            margin-bottom: 1.5rem;
+        }
+
+        .meta {
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="top-bar">
+            <a href="/">← Back to search</a>
+            &nbsp; | &nbsp;
+            <a href="/edit/{{ note.id }}">Edit this note</a>
+        </div>
+
+        <h1>{{ note.title }}</h1>
+
+        <div class="meta">
+            <span class="label">Tags:</span> {{ note.tags }}
+        </div>
+
+        <div class="meta">
+            <span class="label">Category:</span>
+            <span class="category-value">{{ note.category }}</span>
+        </div>
+
+        <div class="meta">
+            <span class="label">Path:</span>
+            <span class="note-path">{{ note.path }}</span>
+        </div>
+
+        {% if note.aliases %}
+        <div class="meta">
+            <span class="label">Aliases:</span> {{ note.aliases }}
+        </div>
+        {% endif %}
+
+        <div class="body">
+{{ note.body }}
+        </div>
+
+    </div>
+</body>
+</html>

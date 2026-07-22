@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head>
+    <title>Source Context - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.15rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .button-link {
+            display: inline-block;
+            padding: 0.6rem 0.8rem;
+            background: #7bdff2;
+            color: #111;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+        }
+
+        .chunk-block {
+            background: #2a2a2a;
+            margin-top: 1.2rem;
+            padding: 1.2rem;
+            border-radius: 8px;
+        }
+
+        .chunk-body {
+            white-space: pre-wrap;
+            line-height: 1.5;
+            margin-top: 0.4rem;
+        }
+
+        .chunk-block.current {
+            border: 2px solid #ffd166;
+            box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.25);
+        }
+
+        .chunk-label {
+            color: #7bdff2;
+            font-weight: bold;
+            margin-bottom: 0.35rem;
+        }
+
+        .chunk-meta {
+            color: #bbb;
+            font-size: 0.95rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .empty-block {
+            background: #252525;
+            margin-top: 1.2rem;
+            padding: 1.2rem;
+            border-radius: 8px;
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Source Context</h1>
+
+    <a href="/" class="button-link">Back to Search</a>
+
+    {% if context.current and context.current.note.is_generated %}
+        <a href="/source/{{ context.current.note.id }}" class="button-link">Open Generated Source View</a>
+    {% endif %}
+
+    {% if context.previous %}
+        <div class="chunk-block">
+            <div class="chunk-label">
+                Previous chunk: {{ context.previous.chunk_index if context.previous.chunk_index is not none else "Unknown" }}
+            </div>
+            <div class="chunk-meta">
+                {{ context.previous.note.title }}
+            </div>
+            <div class="chunk-body">{{ context.previous.note.body }}</div>
+        </div>
+    {% else %}
+        <div class="empty-block">No previous chunk.</div>
+    {% endif %}
+
+    {% if context.current %}
+        <div class="chunk-block current">
+            <div class="chunk-label">
+                Current chunk: {{ context.current.chunk_index if context.current.chunk_index is not none else "Unknown" }}
+            </div>
+            <div class="chunk-meta">
+                {{ context.current.note.title }}
+            </div>
+            <div class="chunk-body">{{ context.current.note.body }}</div>
+        </div>
+    {% endif %}
+
+    {% if context.next %}
+        <div class="chunk-block">
+            <div class="chunk-label">
+                Next chunk: {{ context.next.chunk_index if context.next.chunk_index is not none else "Unknown" }}
+            </div>
+            <div class="chunk-meta">
+                {{ context.next.note.title }}
+            </div>
+            <div class="chunk-body">{{ context.next.note.body }}</div>
+        </div>
+    {% else %}
+        <div class="empty-block">No next chunk.</div>
+    {% endif %}
+</div>
+
+</body>
+</html>

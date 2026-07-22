@@ -1,0 +1,43 @@
+<div class="note-card">
+    <div class="note-title">
+        {{ note.title }}
+        {% if note.is_generated %}
+            <span class="generated-badge">[generated]</span>
+        {% endif %}
+    </div>
+
+    <div class="meta-row">
+        <span class="meta-label">Path:</span> {{ note.relative_path }}
+    </div>
+
+    <div class="meta-row">
+        <span class="meta-label">Category:</span> {{ note.category }}
+    </div>
+
+    <div class="meta-row">
+        <span class="meta-label">Tags:</span>
+        {% if note.tags %}
+            {{ note.tags | join(", ") }}
+        {% else %}
+            —
+        {% endif %}
+    </div>
+
+    {% if note.aliases %}
+        <div class="meta-row">
+            <span class="meta-label">Aliases:</span>
+            {{ note.aliases | join(", ") }}
+        </div>
+    {% endif %}
+
+    <div class="actions">
+        <a href="/note/{{ note.id }}">[Open]</a>
+        <a href="/edit/{{ note.id }}">[Edit]</a>
+
+        {% if note.is_generated %}
+            <a href="/source/{{ note.id }}">[Source]</a>
+        {% else %}
+            <a href="/curator/note/{{ note.id }}/delete">[Delete]</a>
+        {% endif %}
+    </div>
+</div>

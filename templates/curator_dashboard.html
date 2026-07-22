@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+    <title>Curator - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.15rem;
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .subtitle {
+            color: #bbb;
+            margin-bottom: 1.5rem;
+        }
+
+        .button-link {
+            display: inline-block;
+            padding: 0.6rem 0.8rem;
+            background: #7bdff2;
+            color: #111;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1.2rem;
+        }
+
+        .card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 1.2rem;
+            border: 1px solid #3a3a3a;
+        }
+
+        .card-title {
+            color: #ffd166;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-text {
+            color: #d0d0d0;
+            line-height: 1.45;
+            margin-bottom: 1rem;
+        }
+
+        .top-row {
+            margin-bottom: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-row">
+        <a href="/" class="button-link">Back to Search</a>
+    </div>
+
+    <h1>Curator</h1>
+    <div class="subtitle">
+        Manage Archive content, inspect ingested documents, and keep generated output under control.
+    </div>
+
+    <div class="card-grid">
+        <div class="card">
+            <div class="card-title">Browse Notes</div>
+            <div class="card-text">
+                Inspect and manage handwritten notes, categories, tags, aliases, and note paths.
+            </div>
+            
+            <a href="/curator/notes" class="button-link">Open Notes Curator</a>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Browse Ingested Documents</div>
+            <div class="card-text">
+                Inspect source records, view metadata, re-index generated output, and manage reference material safely.
+            </div>
+            <a href="/curator/documents" class="button-link">Open Documents Curator</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

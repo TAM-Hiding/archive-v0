@@ -1,0 +1,226 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Add Note - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.15rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .label {
+            color: #7bdff2;
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+            display: block;
+        }
+        
+        .optional {
+            color: #999;
+            font-weight: normal;
+            font-size: 0.9em;
+        }
+
+        .helper {
+            color: #bbb;
+            font-size: 0.95rem;
+            margin-top: 0.35rem;
+            margin-bottom: 0.75rem;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 0.7rem;
+            font-size: 1.05rem;
+            font-family: Arial, sans-serif;
+            border: none;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background: #2a2a2a;
+            color: #f0f0f0;
+        }
+
+        input {
+            font-weight: bold;
+            letter-spacing: 0.03em;
+        }
+
+        textarea {
+            min-height: 320px;
+            resize: vertical;
+            line-height: 1.45;
+            font-weight: normal;
+            white-space: pre-wrap;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #7bdff2;
+        }
+
+        .field {
+            margin-bottom: 1.2rem;
+        }
+
+        .button-row {
+            margin-top: 1.5rem;
+        }
+
+        button,
+        .button-link {
+            display: inline-block;
+            padding: 0.7rem 1rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-right: 0.6rem;
+        }
+
+        button {
+            background: #ffd166;
+            color: #111;
+        }
+
+        .button-link {
+            background: #7bdff2;
+            color: #111;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Add Note</h1>
+
+        <form method="post">
+            <div class="field">
+                <label class="label" for="title">Title</label>
+                <input id="title" name="title" required>
+            </div>
+
+            <div class="field">
+                <label class="label" for="tags">Tags (comma separated)</label>
+                <input id="tags" name="tags" placeholder="heat, warp, stainless">
+            </div>
+            
+            <div class="field">
+                <label class="label" for="aliases">
+                    Nicknames / alternate names <span class="optional">(OPTIONAL)</span>
+                </label>
+                <input
+                    id="aliases"
+                    name="aliases"
+                    placeholder="How would I search for this?"
+                >
+                <div class="helper">
+                    Other names, slang, or shorthand for the same thing.
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Category</label>
+
+                <div id="category-selector"></div>
+
+                <input type="hidden" id="category" name="category">
+
+                <div class="helper">
+                    Select a folder path step-by-step
+                </div>
+                <div class="helper">
+                    Example paths: <br>
+                    general_fab/general_notes <br>
+                    general_fab/finish/blackening <br>
+                    robotics/general_notes
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label" for="body">Body</label>
+                <textarea id="body" name="body" required placeholder="Write your note here..."></textarea>
+            </div>
+
+            <div class="button-row">
+                <button type="submit">Save Note</button>
+                <a href="/" class="button-link">Back to search</a>
+            </div>
+        </form>
+    </div>
+
+<script>
+const folderTree = {{ folder_tree|tojson }};
+
+const selectorDiv = document.getElementById("category-selector");
+const hiddenInput = document.getElementById("category");
+
+function createDropdown(levelData, pathSoFar) {
+    const select = document.createElement("select");
+
+    const defaultOption = document.createElement("option");
+    defaultOption.textContent = "-- select --";
+    defaultOption.value = "";
+    select.appendChild(defaultOption);
+
+    for (let key in levelData) {
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = key;
+        select.appendChild(option);
+    }
+
+    select.onchange = () => {
+        // remove all dropdowns after this one
+        while (select.nextSibling) {
+            select.nextSibling.remove();
+        }
+
+        const selected = select.value;
+        if (!selected) {
+            updatePath();
+            return;
+        }
+
+        const newPath = [...pathSoFar, selected];
+        updatePath(newPath);
+
+        const nextLevel = levelData[selected];
+        if (Object.keys(nextLevel).length > 0) {
+            const arrow = document.createTextNode(" > ");
+            selectorDiv.appendChild(arrow);
+
+            createDropdown(nextLevel, newPath);
+        }
+    };
+
+    selectorDiv.appendChild(select);
+}
+
+function updatePath(pathArray = []) {
+    hiddenInput.value = pathArray.join("/");
+}
+
+// initialize
+createDropdown(folderTree, []);
+</script>
+
+</body>
+</html>

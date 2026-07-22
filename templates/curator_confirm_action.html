@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+    <title>{{ title }} - The Archive™</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd166;
+            font-size: 2rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .subtitle {
+            color: #bbb;
+            margin-bottom: 1.3rem;
+        }
+
+        .panel {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 1rem 1.1rem;
+            margin-top: 1rem;
+        }
+
+        .panel-title {
+            color: #ffd166;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .meta-item {
+            color: #d0d0d0;
+            line-height: 1.45;
+            margin-top: 0.4rem;
+        }
+
+        .meta-label {
+            color: #7bdff2;
+            font-weight: bold;
+        }
+
+        .warning {
+            color: #ffcf70;
+            line-height: 1.5;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1.4rem;
+        }
+
+        .button-link,
+        .button-danger {
+            display: inline-block;
+            padding: 0.65rem 0.9rem;
+            border-radius: 4px;
+            font-weight: bold;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .button-link {
+            background: #7bdff2;
+            color: #111;
+        }
+
+        .button-danger {
+            background: #ffd166;
+            color: #111;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>{{ title }}</h1>
+    <div class="subtitle">{{ action_description }}</div>
+
+    {% if document %}
+    <div class="panel">
+        <div class="panel-title">Document</div>
+
+        <div class="meta-item">
+            <span class="meta-label">Title:</span>
+            {{ document.title }}
+        </div>
+
+        <div class="meta-item">
+            <span class="meta-label">Source Filename:</span>
+            {{ document.source_filename }}
+        </div>
+
+        <div class="meta-item">
+            <span class="meta-label">Doc ID:</span>
+            {{ document.doc_id }}
+        </div>
+
+        <div class="meta-item">
+            <span class="meta-label">Category:</span>
+            {{ document.category_path }}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+        <div class="panel-title">Warning</div>
+        <div class="warning">{{ warning_text }}</div>
+    </div>
+
+    <form method="post" action="{{ form_action_url }}">
+        <div class="button-row">
+            <a href="{{ cancel_url }}" class="button-link">Cancel</a>
+            <button type="submit" class="button-danger">{{ confirm_button_text }}</button>
+        </div>
+    </form>
+</div>
+
+</body>
+</html>

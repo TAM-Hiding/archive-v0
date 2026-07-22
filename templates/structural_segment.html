@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+    <title>Structural Segment - The Archive™</title>
+    <style>
+        body { font-family: Arial; background: #1e1e1e; color: #f0f0f0; padding: 2rem; font-size: 1.1rem; }
+        .container { max-width: 980px; margin: 0 auto; }
+        h1 { color: #ffd166; margin-bottom: 0.35rem; }
+        .subtitle { color: #bbb; margin-bottom: 1.4rem; }
+        .button-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
+        .button-link { display: inline-block; padding: 0.6rem 0.8rem; background: #7bdff2; color: #111; text-decoration: none; border-radius: 4px; font-weight: bold; }
+        .segment { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+        .segment.current { border: 2px solid #ffd166; }
+        .segment-label { color: #7bdff2; font-weight: bold; margin-bottom: 0.3rem; }
+        .segment-meta { color: #aaa; font-size: 0.95rem; margin-bottom: 0.7rem; }
+        .preview { white-space: pre-wrap; line-height: 1.5; color: #ddd; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="button-row">
+        <a href="/" class="button-link">Back to Search</a>
+        <a href="/curator/document/{{ segment.document.doc_id }}" class="button-link">Back to Document</a>
+        <a href="/curator/document/{{ segment.document.doc_id }}/structure" class="button-link">Back to Structure View</a>
+    </div>
+
+    <h1>Structural Segment</h1>
+    <div class="subtitle">{{ segment.document.title }}</div>
+
+    {% for label, item in [("Previous", segment.previous), ("Current", segment.current), ("Next", segment.next)] %}
+        {% if item %}
+        <div class="segment{% if label == 'Current' %} current{% endif %}">
+            <div class="segment-label">{{ label }} Entry {{ item.entry_index }}</div>
+            <div class="segment-meta">
+                Chunk {{ item.entry.chunk_index }} |
+                Pages {{ item.entry.page_start }}–{{ item.entry.page_end }} |
+                {{ item.entry.char_count }} chars
+                {% if item.entry.section_heading %} |
+                {{ item.entry.section_heading }}
+                {% endif %}
+            </div>
+            <div class="preview">{{ item.body }}</div>
+        </div>
+        {% endif %}
+    {% endfor %}
+</div>
+</body>
+</html>

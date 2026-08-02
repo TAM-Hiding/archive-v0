@@ -1,18 +1,18 @@
-# Python cache and compiled files
+# -------Python cache and compiled files-------
 __pycache__/
 *.py[cod]
 
-# Virtual environments
+# -------Virtual environments-------
 .venv/
 venv/
 env/
 
-# Secrets and local configuration
+# -------Secrets and local configuration-------
 .env
 .env.*
 !.env.example
 
-# Editors and operating-system clutter
+# -------Editors and operating-system clutter-------
 .vscode/
 .idea/
 *.swp
@@ -20,21 +20,22 @@ env/
 .DS_Store
 Thumbs.db
 
-# Test/tool caches
+# -------Test/tool caches-------
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
 
-# Logs and local databases
+# -------Logs and local databases-------
+/logs
 *.log
 *.db
 *.sqlite
 *.sqlite3
 
-# Downloaded/reference source trees
+# -------Downloaded/reference source trees-------
 archive_raw_misc_reference/
 
-# Archive content: personal, generated, and ingested documents
+# -------User data: personal, generated, and ingested documents-------
 notes/

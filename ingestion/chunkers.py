@@ -234,17 +234,26 @@ def split_oversized_block(
     current_parts: list[str] = []
 
     for paragraph in paragraphs:
-        candidate = "\n\n".join(current_parts + [paragraph]).strip()
+        paragraph_parts = [paragraph]
 
-        if current_parts and len(candidate) > max_chars:
-            chunks.append({
-                "page_number": block["page_number"],
-                "heading": block["heading"],
-                "text": "\n\n".join(current_parts).strip(),
-            })
-            current_parts = [paragraph]
-        else:
-            current_parts.append(paragraph)
+        if len(paragraph) > max_chars:
+            paragraph_parts = split_text_into_sentence_groups(
+                paragraph,
+                target_chars=max_chars,
+            )
+
+        for part in paragraph_parts:
+            candidate = "\n\n".join(current_parts + [part]).strip()
+
+            if current_parts and len(candidate) > max_chars:
+                chunks.append({
+                    "page_number": block["page_number"],
+                    "heading": block["heading"],
+                    "text": "\n\n".join(current_parts).strip(),
+                })
+                current_parts = [part]
+            else:
+                current_parts.append(part)
 
     if current_parts:
         chunks.append({

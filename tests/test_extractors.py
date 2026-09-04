@@ -1,19 +1,33 @@
+from pypdf import PdfWriter
+
 from ingestion.extractors import extract_text_from_pdf, save_extracted_text
-from ingestion.registry import read_metadata
 
-METADATA_FILE = "notes/_archive_data/documents/20260408_143945_968692/metadata.json"
 
-metadata = read_metadata(METADATA_FILE)
-source_pdf = metadata["doc_root"] + "/" + metadata["stored_source_filename"]
-output_txt = metadata["extracted_text_file"]
+def test_extract_text_from_pdf(tmp_path):
+    pdf_file = tmp_path / "sample.pdf"
 
-result = extract_text_from_pdf(source_pdf)
-save_extracted_text(output_txt, result["text"])
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
 
-print("Extraction successful.\n")
-print(f"Extractor: {result['extractor']}")
-print(f"Page count: {result['page_count']}")
-print(f"Saved text to: {output_txt}")
+    with pdf_file.open("wb") as f:
+        writer.write(f)
 
-print("\nPreview:\n")
-print(result["text"][:1500])
+    result = extract_text_from_pdf(pdf_file)
+
+    assert result["success"] is True
+    assert result["extractor"] == "pypdf"
+    assert result["page_count"] == 1
+    assert len(result["pages"]) == 1
+    assert result["pages"][0]["page_number"] == 1
+    assert "--- PAGE 1 ---" in result["text"]
+
+
+def test_save_extracted_text(tmp_path):
+    output_file = tmp_path / "nested" / "extracted.txt"
+    text = "Archive test text."
+
+    result = save_extracted_text(output_file, text)
+
+    assert result == output_file
+    assert output_file.exists()
+    assert output_file.read_text(encoding="utf-8") == text

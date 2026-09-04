@@ -243,3 +243,26 @@ def test_save_chunks(tmp_path):
 
     saved_data = json.loads(output_path.read_text(encoding="utf-8"))
     assert saved_data == chunks
+
+def test_oversized_paragraph_inside_multi_paragraph_block_is_split():
+    text = (
+        "Short opening paragraph.\n\n"
+        + ("This is an intentionally oversized sentence for testing. " * 100)
+        + "\n\nShort closing paragraph."
+    )
+
+    block = {
+        "page_number": 1,
+        "heading": "Test Section",
+        "text": text,
+    }
+
+    max_chars = 500
+
+    chunks = split_oversized_block(
+        block,
+        max_chars=max_chars,
+    )
+
+    assert len(chunks) > 1
+    assert all(len(chunk["text"]) <= max_chars for chunk in chunks)

@@ -219,6 +219,80 @@ def search_notes(query, notes, vocabulary, scope="all"):
 
     return top_results, expanded_terms
 
+def search_structural_entries(query):
+    translator = str.maketrans("", "", string.punctuation)
+    clean_query = query.translate(translator).lower()
+
+    query_terms = [term for term in clean_query.split() if len(term) > 1]
+    results = []
+
+    for document in list_ingested_documents():
+        if document.get("chunk_storage_mode") != "structural_only":
+            continue
+
+        structural_index_file = document.get("structural_index_file", "")
+        if not structural_index_file or not os.path.isfile(structural_index_file):
+            continue
+
+        try:
+            with open(structural_index_file, "r", encoding="utf-8") as f:
+                entries = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+
+        for entry in entries:
+            heading = entry.get("section_heading", "")
+            preview = entry.get("preview", "")
+
+            heading_search = heading.lower()
+            preview_search = preview.lower()
+
+            score = 0
+
+            for term in query_terms:
+                if term in heading_search:
+                    score += 5
+                if term in preview_search:
+                    score += 1
+
+            if score <= 0:
+                continue
+
+            result = {
+                "id": f"structural:{document['doc_id']}:{entry['entry_index']}",
+                "title": heading or document.get("title", ""),
+                "title_search": heading_search,
+                "tags": [],
+                "aliases": [],
+                "meta": {
+                    "source_doc_id": document.get("doc_id", ""),
+                    "source_filename": document.get("source_filename", ""),
+                    "entry_index": entry.get("entry_index"),
+                    "chunk_index": entry.get("chunk_index"),
+                    "page_start": entry.get("page_start"),
+                    "page_end": entry.get("page_end"),
+                    "structural_hit": True,
+                },
+                "body": preview,
+                "body_search": preview_search,
+                "path": structural_index_file,
+                "relative_path": structural_index_file,
+                "path_search": structural_index_file.lower().replace("_", " "),
+                "category": document.get("category_path", "").replace("/", " > "),
+                "category_parts": [
+                    part
+                    for part in document.get("category_path", "").split("/")
+                    if part
+                ],
+                "is_generated": True,
+            }
+
+            results.append((score, result))
+
+    results.sort(reverse=True, key=lambda x: x[0])
+
+    return results[:5]
+
 def extract_chunk_index_from_filename(filename):
     parts = filename.rsplit("__chunk_", 1)
     if len(parts) != 2:

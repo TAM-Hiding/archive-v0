@@ -156,3 +156,58 @@ def test_search_scope_filters_notes_and_reference():
 
     assert len(reference_results) == 1
     assert reference_results[0][1]["title"] == "Battery Manual"
+
+def test_structural_index_entries_are_searchable(tmp_path, monkeypatch):
+    import json
+    import archive
+
+    doc_root = tmp_path / "doc_001"
+    doc_root.mkdir()
+
+    structural_index_file = doc_root / "structural_index.json"
+    structural_index_file.write_text(
+        json.dumps(
+            [
+                {
+                    "entry_index": 0,
+                    "chunk_index": 1,
+                    "page_start": 42,
+                    "page_end": 42,
+                    "section_heading": "WOODRUFF KEYS",
+                    "char_count": 500,
+                    "char_start": 1000,
+                    "char_end": 1500,
+                    "preview": "Dimensions and tolerances for Woodruff keys and keyseats.",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        archive,
+        "list_ingested_documents",
+        lambda: [
+            {
+                "doc_id": "doc_001",
+                "title": "Machinery's Handbook",
+                "source_filename": "Machinery.pdf",
+                "category_path": "reference/machining",
+                "chunk_storage_mode": "structural_only",
+                "structural_index_file": str(structural_index_file),
+            }
+        ],
+    )
+
+    results = archive.search_structural_entries("woodruff")
+
+    assert len(results) == 1
+
+    score, result = results[0]
+
+    assert score > 0
+    assert result["meta"]["source_doc_id"] == "doc_001"
+    assert result["meta"]["entry_index"] == 0
+    assert result["meta"]["page_start"] == 42
+    assert result["meta"]["structural_hit"] is True
+    assert "woodruff" in result["body_search"]

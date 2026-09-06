@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from math import ceil
 from pathlib import Path
 from typing import Any
 import json
@@ -494,6 +495,121 @@ def parse_cleaned_text_into_pages(cleaned_text: str) -> list[dict[str, Any]]:
         })
 
     return pages
+
+
+def page_margin_line_indexes(
+    lines: list[str],
+    margin_line_count: int = 3,
+) -> set[int]:
+    """Return conservative nonblank line indexes at the page edges."""
+    if margin_line_count <= 0:
+        return set()
+
+    nonblank_indexes = [
+        index
+        for index, line in enumerate(lines)
+        if line.strip()
+    ]
+
+    if not nonblank_indexes:
+        return set()
+
+    effective_margin_count = min(
+        margin_line_count,
+        max(1, len(nonblank_indexes) // 4),
+    )
+    return set(
+        nonblank_indexes[:effective_margin_count]
+        + nonblank_indexes[-effective_margin_count:]
+    )
+
+
+def detect_repeated_page_furniture(
+    pages: list[dict[str, Any]],
+    margin_line_count: int = 3,
+    min_repetitions: int = 3,
+    min_page_fraction: float = 0.10,
+) -> set[str]:
+    """Detect exact repeated text confined to page-edge line candidates.
+
+    Keys must recur on a meaningful fraction of distinct pages. This catches
+    stable book footers without treating short table continuations, citations,
+    or one-off URLs as disposable content.
+    """
+    if not pages:
+        return set()
+
+    required_pages = max(
+        min_repetitions,
+        ceil(len(pages) * min_page_fraction),
+    )
+    page_counts: Counter[str] = Counter()
+
+    for page in pages:
+        lines = page.get("text", "").splitlines()
+        margin_indexes = page_margin_line_indexes(
+            lines,
+            margin_line_count,
+        )
+        page_keys = {
+            normalize_heading(lines[index])
+            for index in margin_indexes
+            if len(lines[index].strip()) <= 160
+            and re.search(r"[A-Za-z]", lines[index])
+        }
+        page_counts.update(page_keys)
+
+    return {
+        key
+        for key, count in page_counts.items()
+        if count >= required_pages
+    }
+
+
+def strip_repeated_page_furniture(
+    page_text: str,
+    furniture_keys: set[str],
+    margin_line_count: int = 3,
+) -> str:
+    """Remove detected furniture only when it occurs at this page's edges."""
+    if not furniture_keys:
+        return page_text
+
+    lines = page_text.splitlines()
+    nonblank_indexes = [
+        index
+        for index, line in enumerate(lines)
+        if line.strip()
+    ]
+    margin_indexes = page_margin_line_indexes(
+        lines,
+        margin_line_count,
+    )
+
+    if nonblank_indexes and all(
+        normalize_heading(lines[index]) in furniture_keys
+        for index in nonblank_indexes
+    ):
+        margin_indexes = set(nonblank_indexes)
+
+    for index in margin_indexes:
+        for key in sorted(furniture_keys, key=len, reverse=True):
+            suffix_pattern = re.compile(
+                r"\s*"
+                + r"\s+".join(
+                    re.escape(token)
+                    for token in key.split()
+                )
+                + r"\s*$",
+                re.IGNORECASE,
+            )
+            match = suffix_pattern.search(lines[index])
+
+            if match is not None:
+                lines[index] = lines[index][:match.start()].rstrip()
+                break
+
+    return "\n".join(lines)
 
 
 def find_source_text_span(
@@ -1005,6 +1121,7 @@ def build_chunks(
     Returns a list of chunk dictionaries.
     """
     pages = parse_cleaned_text_into_pages(cleaned_text)
+    page_furniture = detect_repeated_page_furniture(pages)
     
     toc_entries = extract_toc_hierarchy(cleaned_text)
 
@@ -1036,7 +1153,10 @@ def build_chunks(
         )
         page_blocks, current_heading, current_subheading = split_page_into_blocks(
             page["page_number"],
-            page["text"],
+            strip_repeated_page_furniture(
+                page["text"],
+                page_furniture,
+            ),
             inherited_heading=current_heading,
             inherited_subheading=current_subheading,
             toc_heading_candidates=toc_heading_candidates,

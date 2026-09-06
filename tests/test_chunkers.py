@@ -3,6 +3,7 @@ import json
 from ingestion.chunkers import (
     build_chunks,
     build_toc_hierarchy_lookup,
+    extract_toc_hierarchy,
     infer_printed_page_offset,
     is_likely_heading,
     normalize_heading,
@@ -564,3 +565,68 @@ def test_ambiguous_toc_hierarchy_remains_unset_without_page_alignment():
         hierarchy_lookup=lookup,
         printed_page_offset=None,
     ) == {}
+
+
+def test_toc_category_ignores_repeated_major_section_header():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "TABLE OF CONTENTS\n"
+        "Each section includes a detailed table of contents\n"
+        "MACHINE ELEMENTS 100\n"
+        "\n"
+        "--- PAGE 10 ---\n"
+        "TABLE OF CONTENTS\n"
+        "MACHINE ELEMENTS\n"
+        "(Continued)\n"
+        "FLEXIBLE BELTS AND SHEAVES\n"
+        "112 Sheave and Groove Dimensions\n"
+    )
+
+    entries = extract_toc_hierarchy(cleaned_text)
+
+    assert entries[-1]["category"] == "FLEXIBLE BELTS AND SHEAVES"
+
+
+def test_toc_category_persists_across_consecutive_toc_pages():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "TABLE OF CONTENTS\n"
+        "Each section includes a detailed table of contents\n"
+        "MACHINE ELEMENTS 100\n"
+        "\n"
+        "--- PAGE 10 ---\n"
+        "TABLE OF CONTENTS\n"
+        "FLEXIBLE BELTS AND SHEAVES\n"
+        "112 Sheave and Groove Dimensions\n"
+        "\n"
+        "--- PAGE 11 ---\n"
+        "TABLE OF CONTENTS\n"
+        "MACHINE ELEMENTS\n"
+        "(Continued)\n"
+        "113 Standard Effective Lengths\n"
+    )
+
+    entries = extract_toc_hierarchy(cleaned_text)
+
+    assert entries[-1]["category"] == "FLEXIBLE BELTS AND SHEAVES"
+
+
+def test_major_section_name_can_complete_multiline_category():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "TABLE OF CONTENTS\n"
+        "Each section includes a detailed table of contents\n"
+        "FASTENERS 100\n"
+        "\n"
+        "--- PAGE 10 ---\n"
+        "TABLE OF CONTENTS\n"
+        "FASTENERS\n"
+        "METRIC THREADED\n"
+        "(Continued)\n"
+        "FASTENERS\n"
+        "112 Comparison with ISO Standards\n"
+    )
+
+    entries = extract_toc_hierarchy(cleaned_text)
+
+    assert entries[-1]["category"] == "METRIC THREADED FASTENERS"

@@ -8,6 +8,10 @@ import re
 
 
 PAGE_MARKER_PATTERN = re.compile(r"^--- PAGE (\d+) ---$")
+PAGE_MARKER_SCAN_PATTERN = re.compile(
+    r"^--- PAGE (\d+) ---[^\S\r\n]*$",
+    re.MULTILINE,
+)
 
 TOC_NUMBERED_ENTRY_PATTERN = re.compile(r"^\s*(\d{1,4})\s+(.+?)\s*$")
 
@@ -466,35 +470,53 @@ def parse_cleaned_text_into_pages(cleaned_text: str) -> list[dict[str, Any]]:
     Expected marker format:
         --- PAGE 1 ---
     """
-    lines = cleaned_text.splitlines()
-
     pages: list[dict[str, Any]] = []
-    current_page_number: int | None = None
-    current_lines: list[str] = []
+    markers = list(PAGE_MARKER_SCAN_PATTERN.finditer(cleaned_text))
 
-    for line in lines:
-        stripped = line.strip()
-        match = PAGE_MARKER_PATTERN.match(stripped)
+    for index, marker in enumerate(markers):
+        raw_start = marker.end()
+        raw_end = (
+            markers[index + 1].start()
+            if index + 1 < len(markers)
+            else len(cleaned_text)
+        )
+        raw_page_text = cleaned_text[raw_start:raw_end]
+        leading_whitespace = len(raw_page_text) - len(raw_page_text.lstrip())
+        trailing_whitespace = len(raw_page_text) - len(raw_page_text.rstrip())
+        source_char_start = raw_start + leading_whitespace
+        source_char_end = raw_end - trailing_whitespace
 
-        if match:
-            if current_page_number is not None:
-                pages.append({
-                    "page_number": current_page_number,
-                    "text": "\n".join(current_lines).strip(),
-                })
-
-            current_page_number = int(match.group(1))
-            current_lines = []
-        else:
-            current_lines.append(line)
-
-    if current_page_number is not None:
         pages.append({
-            "page_number": current_page_number,
-            "text": "\n".join(current_lines).strip(),
+            "page_number": int(marker.group(1)),
+            "text": cleaned_text[source_char_start:source_char_end],
+            "source_char_start": source_char_start,
+            "source_char_end": source_char_end,
         })
 
     return pages
+
+
+def find_source_text_span(
+    text: str,
+    source_text: str,
+    start_at: int = 0,
+) -> tuple[int, int] | None:
+    """Locate normalized chunk text in its source page.
+
+    Chunking may normalize line and paragraph whitespace, so match the
+    original non-whitespace tokens while allowing source whitespace between
+    them. Callers advance ``start_at`` to disambiguate repeated table rows.
+    """
+    tokens = re.findall(r"\S+", text)
+    if not tokens:
+        return None
+
+    pattern = r"\s+".join(re.escape(token) for token in tokens)
+    match = re.search(pattern, source_text[start_at:], re.DOTALL)
+    if match is None:
+        return None
+
+    return start_at + match.start(), start_at + match.end()
 
 KNOWN_HEADINGS = {
     "abstract",
@@ -973,6 +995,11 @@ def build_chunks(
     chunks: list[dict[str, Any]] = []
 
     current_offset = 0
+    pages_by_number = {
+        page["page_number"]: page
+        for page in pages
+    }
+    page_search_cursors: dict[int, int] = {}
 
     for index, block in enumerate(sized_blocks, start=1):
         block_text = block["text"]
@@ -992,6 +1019,23 @@ def build_chunks(
             if printed_page_offset is not None
             else None
         )
+        source_char_start: int | None = None
+        source_char_end: int | None = None
+        source_page = pages_by_number.get(block["page_number"])
+
+        if source_page is not None:
+            page_cursor = page_search_cursors.get(block["page_number"], 0)
+            source_span = find_source_text_span(
+                block_text,
+                source_page["text"],
+                start_at=page_cursor,
+            )
+
+            if source_span is not None:
+                page_start, page_end = source_span
+                source_char_start = source_page["source_char_start"] + page_start
+                source_char_end = source_page["source_char_start"] + page_end
+                page_search_cursors[block["page_number"]] = page_end
 
         chunks.append({
             "chunk_id": f"{doc_id}_chunk_{index:04d}",
@@ -1014,6 +1058,8 @@ def build_chunks(
             "char_count": len(block_text),
             "char_start": char_start,
             "char_end": char_end,
+            "source_char_start": source_char_start,
+            "source_char_end": source_char_end,
         })
 
         current_offset = char_end

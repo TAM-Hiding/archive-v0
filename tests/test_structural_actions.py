@@ -145,3 +145,57 @@ def test_semantic_context_template_identifies_table_unit():
     normalized_html = " ".join(html.split())
     assert "1769 chars" in normalized_html
     assert "| Table | Advantages of Woodruff Keys" in normalized_html
+
+
+def test_semantic_context_template_renders_linked_table_layout():
+    segment = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "context_mode": "semantic_unit",
+        "matched_entry_index": 1,
+        "semantic_unit": {
+            "page_start": 8,
+            "page_end": 8,
+            "char_count": 42,
+            "retrieval_chunk_count": 1,
+            "content_type": "table",
+            "table_caption": "Table 1. Description of Preferred Fits",
+        },
+        "table_layout": {
+            "caption": "Table 1. Description of Preferred Fits",
+            "page_number": 8,
+            "row_count": 2,
+            "column_count": 2,
+            "cells": [{}, {}, {}, {}],
+            "grid": [
+                ["Fit", "Description"],
+                ["Running", "Parts move freely"],
+            ],
+            "reading_order_text": "Fit Description\nRunning Parts move freely",
+        },
+        "context_entries": [{
+            "entry_index": 1,
+            "entry": {
+                "chunk_index": 2,
+                "retrieval_chunk_index": 1,
+                "retrieval_chunk_count": 1,
+                "page_start": 8,
+                "page_end": 8,
+                "char_count": 42,
+                "content_type": "table",
+                "section_heading": "Preferred Fits",
+            },
+            "body": "Table 1. Description of Preferred Fits",
+        }],
+        "previous": None,
+        "current": None,
+        "next": None,
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_segment.html", segment=segment)
+
+    assert "2 detected rows" in html
+    assert "2 detected columns" in html
+    assert "Running" in html
+    assert "Parts move freely" in html
+    assert "Coordinate-derived reading order" in html

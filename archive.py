@@ -518,6 +518,11 @@ def list_ingested_documents():
             "chunk_count_estimate": metadata.get("chunk_count_estimate", 0),
             "structural_index_file": metadata.get("structural_index_file", ""),
             "structural_index_entry_count": metadata.get("structural_index_entry_count", 0),
+            "table_layout_file": metadata.get("table_layout_file", ""),
+            "table_layout_storage_mode": metadata.get(
+                "table_layout_storage_mode",
+                "",
+            ),
             "promoted_chunk_count": metadata.get("promoted_chunk_count", 0),
 
             "metadata_file": metadata_file,
@@ -598,6 +603,53 @@ def get_structural_index_for_document(doc_id):
     }
 
 
+def get_table_layout_for_entry(document, entry):
+    """Load only the table-layout shard linked to one structural entry."""
+    layout_id = entry.get("table_layout_id")
+    layout_file = document.get("table_layout_file", "")
+    if not layout_id or not layout_file or not os.path.isfile(layout_file):
+        return None
+
+    try:
+        with open(layout_file, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    if manifest.get("storage_mode") != "sharded":
+        for layout in manifest.get("layouts", []):
+            if layout.get("layout_id") == layout_id:
+                return layout
+        return None
+
+    layout_record = next(
+        (
+            layout
+            for layout in manifest.get("layouts", [])
+            if layout.get("layout_id") == layout_id
+        ),
+        None,
+    )
+    if layout_record is None:
+        return None
+
+    manifest_root = os.path.realpath(os.path.dirname(layout_file))
+    shard_path = os.path.realpath(
+        os.path.join(manifest_root, layout_record.get("file", ""))
+    )
+    try:
+        if os.path.commonpath([manifest_root, shard_path]) != manifest_root:
+            return None
+    except ValueError:
+        return None
+
+    try:
+        with open(shard_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
 def get_structural_segment(doc_id, entry_index):
     structural_document = get_structural_index_for_document(doc_id)
 
@@ -647,6 +699,7 @@ def get_structural_segment(doc_id, entry_index):
 
     current = build_entry(entry_index)
     current_entry = entries[entry_index]
+    table_layout = get_table_layout_for_entry(document, current_entry)
     semantic_unit_id = current_entry.get("semantic_unit_id")
     context_entries = []
     context_mode = "legacy_neighbors"
@@ -711,6 +764,7 @@ def get_structural_segment(doc_id, entry_index):
         "context_entries": context_entries,
         "matched_entry_index": entry_index,
         "semantic_unit": semantic_unit,
+        "table_layout": table_layout,
         "previous": build_entry(entry_index - 1),
         "current": current,
         "next": build_entry(entry_index + 1)

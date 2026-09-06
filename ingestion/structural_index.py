@@ -28,6 +28,7 @@ def build_structural_index(chunks: list[dict[str, Any]], preview_chars: int = 22
             "page_start": chunk.get("page_start"),
             "page_end": chunk.get("page_end"),
             "section_heading": chunk.get("section_heading") or "",
+            "subheading": chunk.get("subheading") or "",
             "major_section": chunk.get("major_section") or "",
             "category": chunk.get("category") or "",
             "printed_page": chunk.get("printed_page"),

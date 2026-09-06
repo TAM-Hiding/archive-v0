@@ -199,3 +199,6 @@ def test_semantic_context_template_renders_linked_table_layout():
     assert "Running" in html
     assert "Parts move freely" in html
     assert "Coordinate-derived reading order" in html
+    assert "Raw extracted source chunks" in html
+    assert '<details class="raw-chunks">' in html
+    assert '<details class="raw-chunks" open>' not in html

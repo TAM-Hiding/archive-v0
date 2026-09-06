@@ -12,6 +12,9 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "major_section": "MATHEMATICS",
             "category": "NUMBERS, FRACTIONS, AND DECIMALS",
             "printed_page": 15,
+            "section_printed_page": 15,
+            "estimated_printed_page": 16,
+            "printed_page_offset": 12,
             "running_header": "FACTORIAL 17",
             "char_count": 34,
             "char_start": 120,
@@ -33,6 +36,9 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "major_section": "MATHEMATICS",
             "category": "NUMBERS, FRACTIONS, AND DECIMALS",
             "printed_page": 15,
+            "section_printed_page": 15,
+            "estimated_printed_page": 16,
+            "printed_page_offset": 12,
             "running_header": "FACTORIAL 17",
             "char_count": 34,
             "char_start": 120,
@@ -53,3 +59,20 @@ def test_build_structural_index_uses_empty_subheading_when_missing():
     )
 
     assert result[0]["subheading"] == ""
+
+
+def test_structural_index_supports_legacy_printed_page_metadata():
+    result = build_structural_index(
+        [
+            {
+                "chunk_index": 1,
+                "printed_page": 15,
+                "text": "Legacy chunk body.",
+            }
+        ]
+    )
+
+    assert result[0]["printed_page"] == 15
+    assert result[0]["section_printed_page"] == 15
+    assert result[0]["estimated_printed_page"] is None
+    assert result[0]["printed_page_offset"] is None

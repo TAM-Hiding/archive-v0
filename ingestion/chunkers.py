@@ -430,10 +430,7 @@ def resolve_toc_hierarchy(
     if preceding:
         return max(preceding, key=lambda item: item["printed_page"])
 
-    return min(
-        positioned,
-        key=lambda item: abs(item["printed_page"] - estimated_printed_page),
-    )
+    return {}
 
 def parse_cleaned_text_into_pages(cleaned_text: str) -> list[dict[str, Any]]:
     """
@@ -963,6 +960,12 @@ def build_chunks(
             toc_hierarchy_lookup,
             printed_page_offset,
         )
+        section_printed_page = hierarchy.get("printed_page")
+        estimated_printed_page = (
+            block["page_number"] - printed_page_offset
+            if printed_page_offset is not None
+            else None
+        )
 
         chunks.append({
             "chunk_id": f"{doc_id}_chunk_{index:04d}",
@@ -974,7 +977,12 @@ def build_chunks(
             "subheading": block.get("subheading"),
             "major_section": hierarchy.get("major_section"),
             "category": hierarchy.get("category"),
-            "printed_page": hierarchy.get("printed_page"),
+            # Compatibility alias for pre-provenance-separation consumers.
+            # This is the section's TOC start page, not the chunk's page.
+            "printed_page": section_printed_page,
+            "section_printed_page": section_printed_page,
+            "estimated_printed_page": estimated_printed_page,
+            "printed_page_offset": printed_page_offset,
             "running_header": block.get("running_header"),
             "text": block_text,
             "char_count": len(block_text),

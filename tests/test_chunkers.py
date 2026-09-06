@@ -1,6 +1,7 @@
 import json
 
 from ingestion.chunkers import (
+    apply_front_matter_rules,
     build_chunks,
     build_toc_hierarchy_lookup,
     extract_toc_hierarchy,
@@ -125,6 +126,30 @@ def test_inline_abstract_heading():
     ]
 
     assert final_heading == "Abstract"
+
+
+def test_front_matter_abstract_promotion_preserves_block_metadata():
+    block = {
+        "page_number": 1,
+        "heading": None,
+        "subheading": "Author Summary",
+        "running_header": "JOURNAL HEADER 1",
+        "source_marker": "native-front-matter",
+        "text": "  Abstract: Preserved metadata matters.  ",
+    }
+
+    result = apply_front_matter_rules([block])
+
+    assert result == [
+        {
+            "page_number": 1,
+            "heading": "Abstract",
+            "subheading": "Author Summary",
+            "running_header": "JOURNAL HEADER 1",
+            "source_marker": "native-front-matter",
+            "text": "Abstract: Preserved metadata matters.",
+        }
+    ]
 
 def test_heading_state_persists_across_pages():
     toc_candidates = {

@@ -904,7 +904,7 @@ def apply_front_matter_rules(blocks: list[dict[str, Any]]) -> list[dict[str, Any
 
         if heading is None and text.lower().startswith("abstract:"):
             block = {
-                "page_number": block["page_number"],
+                **block,
                 "heading": "Abstract",
                 "text": text,
             }

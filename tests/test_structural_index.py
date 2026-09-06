@@ -19,6 +19,8 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "char_count": 34,
             "char_start": 120,
             "char_end": 154,
+            "source_char_start": 220,
+            "source_char_end": 254,
             "text": "Continued complex-number operations.",
         }
     ]
@@ -43,6 +45,8 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "char_count": 34,
             "char_start": 120,
             "char_end": 154,
+            "source_char_start": 220,
+            "source_char_end": 254,
             "preview": "Continued complex-number operations.",
         }
     ]

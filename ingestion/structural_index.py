@@ -42,6 +42,8 @@ def build_structural_index(chunks: list[dict[str, Any]], preview_chars: int = 22
             "char_count": chunk.get("char_count", len(text)),
             "char_start": chunk.get("char_start"),
             "char_end": chunk.get("char_end"),
+            "source_char_start": chunk.get("source_char_start"),
+            "source_char_end": chunk.get("source_char_end"),
             "preview": preview,
         })
 

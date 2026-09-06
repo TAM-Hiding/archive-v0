@@ -22,6 +22,9 @@
         .table-grid td { border: 1px solid #666; padding: 0.45rem; white-space: pre-wrap; vertical-align: top; }
         .table-fallback { margin-top: 1rem; }
         .table-fallback summary { cursor: pointer; color: #7bdff2; font-weight: bold; }
+        .raw-chunks { margin-top: 1rem; background: #242424; border: 1px solid #3a3a3a; border-radius: 8px; padding: 0.8rem 1rem; }
+        .raw-chunks > summary { cursor: pointer; color: #aaa; font-weight: bold; }
+        .raw-chunks[open] > summary { margin-bottom: 1rem; }
     </style>
 </head>
 <body>
@@ -61,6 +64,14 @@
     {% endif %}
 
     {% if segment.context_mode == "semantic_unit" %}
+        {% if segment.table_layout %}
+        <details class="raw-chunks">
+            <summary>
+                Raw extracted source chunks —
+                {{ segment.semantic_unit.retrieval_chunk_count }} chunks |
+                {{ segment.semantic_unit.char_count }} chars
+            </summary>
+        {% else %}
         <div class="unit-meta">
             {% if segment.semantic_unit.table_caption %}
                 <strong>{{ segment.semantic_unit.table_caption }}</strong> —
@@ -73,6 +84,7 @@
             {{ segment.semantic_unit.retrieval_chunk_count }} retrieval chunks |
             {{ segment.semantic_unit.char_count }} chars
         </div>
+        {% endif %}
 
         {% for item in segment.context_entries %}
         <div class="segment{% if item.entry_index == segment.matched_entry_index %} current{% endif %}">
@@ -94,6 +106,7 @@
             <div class="preview">{{ item.body }}</div>
         </div>
         {% endfor %}
+        {% if segment.table_layout %}</details>{% endif %}
     {% else %}
         {% for label, item in [("Previous", segment.previous), ("Current", segment.current), ("Next", segment.next)] %}
         {% if item %}

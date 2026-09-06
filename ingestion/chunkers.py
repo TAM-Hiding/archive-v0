@@ -131,10 +131,25 @@ def extract_toc_hierarchy(cleaned_text: str) -> list[dict[str, Any]]:
     """
     pages = parse_cleaned_text_into_pages(cleaned_text)
     entries: list[dict[str, Any]] = []
+    major_section_titles = {
+        normalize_heading(section["title"])
+        for section in extract_major_toc_sections(cleaned_text)
+        if section.get("title")
+    }
+    current_category: str | None = None
+    previous_toc_page: int | None = None
 
     for page in pages:
         if not looks_like_toc_page(page["text"]):
             continue
+
+        if (
+            previous_toc_page is None
+            or page["page_number"] != previous_toc_page + 1
+        ):
+            current_category = None
+
+        previous_toc_page = page["page_number"]
 
         lines = [
             line.strip()
@@ -142,7 +157,6 @@ def extract_toc_hierarchy(cleaned_text: str) -> list[dict[str, Any]]:
             if line.strip()
         ]
 
-        current_category: str | None = None
         pending_category_parts: list[str] = []
 
         for line in lines:
@@ -152,6 +166,11 @@ def extract_toc_hierarchy(cleaned_text: str) -> list[dict[str, Any]]:
                 continue
 
             if normalized in {"continued", "(continued)"}:
+                continue
+
+            # Repeated major-section names are page-level navigation headers,
+            # not part of the local TOC category.
+            if normalized in major_section_titles and not pending_category_parts:
                 continue
 
             match = TOC_NUMBERED_ENTRY_PATTERN.match(line)

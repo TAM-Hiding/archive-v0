@@ -636,10 +636,72 @@ def get_structural_segment(doc_id, entry_index):
             "body": body,
         }
 
+    current = build_entry(entry_index)
+    current_entry = entries[entry_index]
+    semantic_unit_id = current_entry.get("semantic_unit_id")
+    context_entries = []
+    context_mode = "legacy_neighbors"
+    semantic_unit = None
+
+    if semantic_unit_id:
+        unit_start = entry_index
+        unit_end = entry_index
+
+        while (
+            unit_start > 0
+            and entries[unit_start - 1].get("semantic_unit_id")
+            == semantic_unit_id
+        ):
+            unit_start -= 1
+
+        while (
+            unit_end + 1 < len(entries)
+            and entries[unit_end + 1].get("semantic_unit_id")
+            == semantic_unit_id
+        ):
+            unit_end += 1
+
+        context_entries = [
+            build_entry(index)
+            for index in range(unit_start, unit_end + 1)
+        ]
+        context_mode = "semantic_unit"
+        first_unit_entry = entries[unit_start]
+        last_unit_entry = entries[unit_end]
+        semantic_unit_char_count = current_entry.get(
+            "semantic_unit_char_count"
+        )
+
+        if semantic_unit_char_count is None:
+            semantic_unit_char_count = sum(
+                entry.get("char_count", 0) or 0
+                for entry in entries[unit_start:unit_end + 1]
+            )
+
+        semantic_unit = {
+            "id": semantic_unit_id,
+            "index": current_entry.get("semantic_unit_index"),
+            "page_start": current_entry.get("semantic_unit_page_start")
+            or first_unit_entry.get("page_start"),
+            "page_end": current_entry.get("semantic_unit_page_end")
+            or last_unit_entry.get("page_end"),
+            "char_count": semantic_unit_char_count,
+            "block_count": current_entry.get("semantic_unit_block_count"),
+            "retrieval_chunk_count": current_entry.get(
+                "retrieval_chunk_count"
+            ) or len(context_entries),
+            "section_heading": current_entry.get("section_heading"),
+            "subheading": current_entry.get("subheading"),
+        }
+
     return {
         "document": document,
+        "context_mode": context_mode,
+        "context_entries": context_entries,
+        "matched_entry_index": entry_index,
+        "semantic_unit": semantic_unit,
         "previous": build_entry(entry_index - 1),
-        "current": build_entry(entry_index),
+        "current": current,
         "next": build_entry(entry_index + 1)
     }
 

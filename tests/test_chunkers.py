@@ -83,35 +83,110 @@ def test_split_page_into_heading_blocks():
         "These are the results."
     )
 
-    result = split_page_into_blocks(3, page_text)
+    result, final_heading, final_subheading = split_page_into_blocks(3, page_text)
 
     assert result == [
         {
             "page_number": 3,
             "heading": "INTRODUCTION",
+            "subheading": None,
+            "running_header": None,
             "text": "This is the introduction.",
         },
         {
             "page_number": 3,
             "heading": "RESULTS",
+            "subheading": None,
+            "running_header": None,
             "text": "These are the results.",
         },
     ]
 
+    assert final_heading == "RESULTS"
 
 def test_inline_abstract_heading():
     page_text = "Abstract: This paper describes a deterministic archive."
 
-    result = split_page_into_blocks(1, page_text)
+    result, final_heading, final_subheading = split_page_into_blocks(1, page_text)
 
     assert result == [
         {
             "page_number": 1,
             "heading": "Abstract",
+            "subheading": None,
+            "running_header": None,
             "text": "This paper describes a deterministic archive.",
         }
     ]
 
+    assert final_heading == "Abstract"
+
+def test_heading_state_persists_across_pages():
+    toc_candidates = {
+        "logarithms",
+        "imaginary and complex numbers",
+    }
+
+    page_26 = (
+        "14 LOGARITHMS\n"
+        "Logarithms\n"
+        "Logarithms have long been used..."
+    )
+
+    page_27 = (
+        "COMPLEX NUMBERS 15\n"
+        "Continuation of logarithms text.\n"
+        "Imaginary and Complex Numbers\n"
+        "Complex Numbers.-Complex numbers represent..."
+    )
+
+    blocks_26, final_heading, final_subheading = split_page_into_blocks(
+        26,
+        page_26,
+        toc_heading_candidates=toc_candidates,
+    )
+
+    blocks_27, final_heading, final_subheading = split_page_into_blocks(
+        27,
+        page_27,
+        inherited_heading=final_heading,
+        toc_heading_candidates=toc_candidates,
+    )
+
+    assert blocks_26[0]["heading"] == "Logarithms"
+
+    assert blocks_27[0]["heading"] == "Logarithms"
+    assert blocks_27[0]["running_header"] == "COMPLEX NUMBERS 15"
+
+    assert blocks_27[1]["heading"] == "Imaginary and Complex Numbers"
+    assert final_heading == "Imaginary and Complex Numbers"
+    
+def test_non_toc_title_case_line_is_not_promoted_to_heading():
+    toc_candidates = {"logarithms"}
+
+    page_text = (
+        "14 LOGARITHMS\n"
+        "Constants Involving π Frequently Used in Mathematical Calculations\n"
+        "Some table data here.\n"
+        "Logarithms\n"
+        "Actual logarithms body."
+    )
+
+    blocks, final_heading, final_subheading = split_page_into_blocks(
+        26,
+        page_text,
+        inherited_heading="Powers and Roots",
+        toc_heading_candidates=toc_candidates,
+    )
+
+    assert blocks[0]["heading"] == "Powers and Roots"
+    assert (
+        "Constants Involving π Frequently Used in Mathematical Calculations"
+        in blocks[0]["text"]
+    )
+
+    assert blocks[1]["heading"] == "Logarithms"
+    assert final_heading == "Logarithms"
 
 def test_split_text_into_paragraphs():
     text = "First paragraph.\n\nSecond paragraph.\n\n\nThird paragraph."

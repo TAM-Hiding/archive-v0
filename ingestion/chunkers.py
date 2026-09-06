@@ -8,17 +8,38 @@ import re
 
 PAGE_MARKER_PATTERN = re.compile(r"^--- PAGE (\d+) ---$")
 
-KNOWN_HEADINGS = {
-    "abstract",
-    "materials and methods",
-    "results",
-    "references",
-    "further research",
-    "acknowledgments",
-    "introduction",
-    "discussion",
-    "conclusion",
-}
+TOC_NUMBERED_ENTRY_PATTERN = re.compile(r"^\s*(\d{1,4})\s+(.+?)\s*$")
+
+RUNNING_HEADER_PATTERNS = [
+    re.compile(r"^\d+\s+[A-Z][A-Z0-9\s,&/\-]+$"),
+    re.compile(r"^[A-Z][A-Z0-9\s,&/\-]+\s+\d+$"),
+]
+
+
+def is_running_page_header(line: str) -> bool:
+    text = line.strip()
+
+    if not text or len(text) > 100:
+        return False
+
+    letters = [char for char in text if char.isalpha()]
+    alnum = [char for char in text if char.isalnum()]
+
+    # Real running headers are overwhelmingly textual.
+    # Reject equation/table rows containing only scattered letters.
+    if len(letters) < 4:
+        return False
+
+    if not alnum:
+        return False
+
+    if len(letters) / len(alnum) < 0.5:
+        return False
+
+    return any(
+        pattern.fullmatch(text)
+        for pattern in RUNNING_HEADER_PATTERNS
+    )
 
 
 def normalize_heading(text: str) -> str:
@@ -29,6 +50,279 @@ def normalize_heading(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     return text
 
+def looks_like_toc_page(page_text: str) -> bool:
+    """
+    Detect explicit table-of-contents pages.
+
+    For now, require the source itself to identify the page as a TOC.
+    This avoids mistaking tables, numbered procedures, equations,
+    and reference data for structural navigation.
+    """
+    lines = [
+        line.strip()
+        for line in page_text.splitlines()
+        if line.strip()
+    ]
+
+    return any(
+        normalize_heading(line) == "table of contents"
+        for line in lines[:5]
+    )
+
+def extract_toc_heading_candidates(cleaned_text: str) -> set[str]:
+    """
+    Extract normalized semantic heading candidates from numbered TOC entries.
+
+    Example:
+        '14 Logarithms'
+        -> 'logarithms'
+
+        '15 Imaginary and Complex Numbers'
+        -> 'imaginary and complex numbers'
+    """
+    pages = parse_cleaned_text_into_pages(cleaned_text)
+
+    candidates: set[str] = set()
+
+    for page in pages:
+        if not looks_like_toc_page(page["text"]):
+            continue
+
+        for line in page["text"].splitlines():
+            stripped = line.strip()
+            match = TOC_NUMBERED_ENTRY_PATTERN.match(stripped)
+
+            if not match:
+                continue
+
+            title = match.group(2).strip()
+
+            if not title:
+                continue
+
+            if len(title) > 100:
+                continue
+
+            if title.endswith((".", ";", ",")):
+                continue
+
+            if not re.search(r"[A-Za-z]", title):
+                continue
+
+            candidates.add(normalize_heading(title))
+
+    return candidates
+
+def extract_toc_hierarchy(cleaned_text: str) -> list[dict[str, Any]]:
+    """
+    Extract a first-pass hierarchy from explicit TOC pages.
+
+    Returns records shaped like:
+
+        {
+            "toc_page": 13,
+            "category": "NUMBERS, FRACTIONS, AND DECIMALS",
+            "title": "Logarithms",
+            "printed_page": 14,
+        }
+
+    This does not yet modify chunks. It only builds structural metadata.
+    """
+    pages = parse_cleaned_text_into_pages(cleaned_text)
+    entries: list[dict[str, Any]] = []
+
+    for page in pages:
+        if not looks_like_toc_page(page["text"]):
+            continue
+
+        lines = [
+            line.strip()
+            for line in page["text"].splitlines()
+            if line.strip()
+        ]
+
+        current_category: str | None = None
+        pending_category_parts: list[str] = []
+
+        for line in lines:
+            normalized = normalize_heading(line)
+
+            if normalized == "table of contents":
+                continue
+
+            if normalized in {"continued", "(continued)"}:
+                continue
+
+            match = TOC_NUMBERED_ENTRY_PATTERN.match(line)
+
+            if match:
+                # Finish any multi-line uppercase category before
+                # attaching this numbered entry to it.
+                if pending_category_parts:
+                    current_category = " ".join(pending_category_parts)
+                    pending_category_parts = []
+
+                printed_page = int(match.group(1))
+                title = match.group(2).strip()
+
+                if not title:
+                    continue
+
+                if len(title) > 100:
+                    continue
+
+                if title.endswith((".", ";", ",")):
+                    continue
+
+                if not re.search(r"[A-Za-z]", title):
+                    continue
+
+                entries.append({
+                    "toc_page": page["page_number"],
+                    "category": current_category,
+                    "title": title,
+                    "printed_page": printed_page,
+                })
+
+                continue
+
+            # Uppercase TOC lines act as category headings.
+            letters = [char for char in line if char.isalpha()]
+
+            if (
+                letters
+                and len(line) <= 100
+                and line.upper() == line
+            ):
+                pending_category_parts.append(line)
+                continue
+
+            # A normal non-numbered, non-uppercase line ends a pending
+            # category heading.
+            if pending_category_parts:
+                current_category = " ".join(pending_category_parts)
+                pending_category_parts = []
+
+    return entries
+
+def extract_major_toc_sections(cleaned_text: str) -> list[dict[str, Any]]:
+    """
+    Extract major handbook sections from the global table of contents.
+
+    Returns records like:
+
+        {
+            "title": "MATHEMATICS",
+            "printed_page": 1,
+        }
+
+        {
+            "title": "TOOLING AND TOOLMAKING",
+            "printed_page": 803,
+        }
+    """
+    pages = parse_cleaned_text_into_pages(cleaned_text)
+    sections: list[dict[str, Any]] = []
+
+    global_toc_phrase = "each section includes a detailed table of contents"
+
+    for page in pages:
+        page_normalized = normalize_heading(page["text"])
+
+        if global_toc_phrase not in page_normalized:
+            continue
+
+        for line in page["text"].splitlines():
+            stripped = line.strip()
+
+            match = re.match(
+                r"^([A-Z][A-Z0-9\s,&/\-]+?)\s+(\d{1,4})$",
+                stripped,
+            )
+
+            if not match:
+                continue
+
+            title = match.group(1).strip()
+            printed_page = int(match.group(2))
+
+            if title == "TABLE OF CONTENTS":
+                continue
+
+            sections.append({
+                "title": title,
+                "printed_page": printed_page,
+            })
+
+    sections.sort(key=lambda item: item["printed_page"])
+    return sections
+
+def attach_major_sections_to_toc_entries(
+    entries: list[dict[str, Any]],
+    major_sections: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Attach each TOC entry to the major handbook section whose
+    printed-page range contains that entry.
+    """
+    if not major_sections:
+        return entries
+
+    sorted_sections = sorted(
+        major_sections,
+        key=lambda item: item["printed_page"],
+    )
+
+    enriched: list[dict[str, Any]] = []
+
+    for entry in entries:
+        printed_page = entry.get("printed_page")
+        major_section: str | None = None
+
+        if printed_page is not None:
+            for section in sorted_sections:
+                if section["printed_page"] <= printed_page:
+                    major_section = section["title"]
+                else:
+                    break
+
+        enriched.append({
+            **entry,
+            "major_section": major_section,
+        })
+
+    return enriched
+
+def build_toc_hierarchy_lookup(
+    entries: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """
+    Build a normalized heading lookup for TOC hierarchy metadata.
+
+    Example:
+        "logarithms" -> {
+            "major_section": "MATHEMATICS",
+            "category": "NUMBERS, FRACTIONS, AND DECIMALS",
+            "printed_page": 14,
+        }
+    """
+    lookup: dict[str, dict[str, Any]] = {}
+
+    for entry in entries:
+        title = entry.get("title")
+
+        if not title:
+            continue
+
+        key = normalize_heading(title)
+
+        lookup[key] = {
+            "major_section": entry.get("major_section"),
+            "category": entry.get("category"),
+            "printed_page": entry.get("printed_page"),
+        }
+
+    return lookup
 
 def parse_cleaned_text_into_pages(cleaned_text: str) -> list[dict[str, Any]]:
     """
@@ -67,6 +361,20 @@ def parse_cleaned_text_into_pages(cleaned_text: str) -> list[dict[str, Any]]:
 
     return pages
 
+KNOWN_HEADINGS = {
+    "abstract",
+    "introduction",
+    "background",
+    "methods",
+    "methodology",
+    "results",
+    "discussion",
+    "conclusion",
+    "conclusions",
+    "references",
+    "bibliography",
+    "appendix",
+}
 
 def is_likely_heading(line: str) -> bool:
     """
@@ -94,11 +402,109 @@ def is_likely_heading(line: str) -> bool:
     if not letters_only:
         return False
 
-    uppercase_ratio = sum(1 for c in letters_only if c.isupper()) / len(letters_only)
+    words = re.findall(r"[A-Za-z]+", text)
+    letters = [char for char in text if char.isalpha()]
+    alnum = [char for char in text if char.isalnum()]
+
+    if not words:
+        return False
+
+    # Reject formula labels like P10 / C52 and table rows
+    # containing only isolated letter codes.
+    if max(len(word) for word in words) < 3:
+        return False
+
+    if alnum and len(letters) / len(alnum) < 0.5:
+        return False
+
+    uppercase_ratio = sum(
+        1 for c in letters_only if c.isupper()
+    ) / len(letters_only)
+
     return uppercase_ratio > 0.7
+    
+INLINE_SUBHEADING_PATTERN = re.compile(
+    r"^(.+?)\.\-\s*(.*)$"
+)
 
+def extract_inline_subheading(
+    line: str,
+    toc_heading_candidates: set[str] | None = None,
+) -> tuple[str | None, str]:
+    """
+    Detect Handbook-style inline subsection headings such as:
 
-def split_page_into_blocks(page_number: int, page_text: str) -> list[dict[str, Any]]:
+        Permutations.-The number of ways...
+        Combinations.-Arranging objects...
+        Operations on Complex Numbers.-Example 1...
+
+    Returns:
+        (subheading, body_text)
+
+    If no inline subheading is detected:
+        (None, original_line)
+    """
+    stripped = line.strip()
+
+    match = INLINE_SUBHEADING_PATTERN.match(stripped)
+    if not match:
+        return None, stripped
+
+    candidate = match.group(1).strip()
+    body = match.group(2).strip()
+
+    if not candidate:
+        return None, stripped
+
+    # Keep this deliberately conservative.
+    if len(candidate) > 100:
+        return None, stripped
+
+    if not re.search(r"[A-Za-z]", candidate):
+        return None, stripped
+
+    return candidate, body
+
+def match_toc_section_heading(
+    text: str,
+    toc_heading_candidates: set[str],
+) -> str | None:
+    """
+    Match a body heading against authoritative TOC headings.
+
+    Allows only conservative editorial expansions such as:
+        Factorial -> Factorial Notation
+        Prime Numbers and Factors -> Prime Numbers and Factors of Numbers
+    """
+    normalized = normalize_heading(text)
+
+    if normalized in toc_heading_candidates:
+        return normalized
+
+    allowed_suffixes = {
+        " notation",
+        " of numbers",
+    }
+
+    for candidate in toc_heading_candidates:
+        if not normalized.startswith(candidate):
+            continue
+
+        suffix = normalized[len(candidate):]
+
+        if suffix in allowed_suffixes:
+            return candidate
+
+    return None
+
+def split_page_into_blocks(
+    page_number: int,
+    page_text: str,
+    inherited_heading: str | None = None,
+    inherited_subheading: str | None = None,
+    toc_heading_candidates: set[str] | None = None,
+    toc_heading_lookup: dict[str, str] | None = None,
+) -> tuple[list[dict[str, Any]], str | None, str | None]:
     """
     Split a page into heading-aware blocks.
 
@@ -113,17 +519,27 @@ def split_page_into_blocks(page_number: int, page_text: str) -> list[dict[str, A
     """
     lines = [line.rstrip() for line in page_text.splitlines()]
     blocks: list[dict[str, Any]] = []
+    
+    if toc_heading_candidates is None:
+        toc_heading_candidates = set()
+    
+    if toc_heading_lookup is None:
+        toc_heading_lookup = {}
 
-    current_heading: str | None = None
+    current_heading: str | None = inherited_heading
+    current_subheading: str | None = inherited_subheading
+    current_running_header: str | None = None
     current_body_lines: list[str] = []
 
     def flush_block() -> None:
-        nonlocal current_heading, current_body_lines
+        nonlocal current_heading, current_running_header, current_body_lines
         block_text = "\n".join(current_body_lines).strip()
         if block_text:
             blocks.append({
                 "page_number": page_number,
                 "heading": current_heading,
+                "subheading": current_subheading,
+                "running_header": current_running_header,
                 "text": block_text,
             })
         current_body_lines = []
@@ -134,12 +550,44 @@ def split_page_into_blocks(page_number: int, page_text: str) -> list[dict[str, A
         if not stripped:
             current_body_lines.append("")
             continue
+        
+        if is_running_page_header(stripped):
+            flush_block()
+            current_running_header = stripped
+            continue
+
+        matched_toc_heading = match_toc_section_heading(
+            stripped,
+            toc_heading_candidates,
+        )
+
+        if matched_toc_heading is not None:
+            flush_block()
+
+            exact_match = normalize_heading(stripped) == matched_toc_heading
+
+            canonical_heading = toc_heading_lookup.get(
+                matched_toc_heading,
+                stripped if exact_match else matched_toc_heading,
+            )
+
+            if exact_match:
+                current_heading = canonical_heading
+                current_subheading = None
+            else:
+                # Editorially expanded body heading, e.g.:
+                # "Prime Numbers and Factors of Numbers"
+                current_heading = canonical_heading
+                current_subheading = stripped
+
+            continue
 
         # Inline heading marker handling, e.g. "Abstract: ..."
         lowered = stripped.lower()
         if lowered.startswith("abstract:"):
             flush_block()
             current_heading = "Abstract"
+            current_subheading = None
             abstract_body = stripped[len("abstract:"):].strip()
             if abstract_body:
                 current_body_lines.append(abstract_body)
@@ -148,12 +596,46 @@ def split_page_into_blocks(page_number: int, page_text: str) -> list[dict[str, A
         if is_likely_heading(stripped):
             flush_block()
             current_heading = stripped
-        else:
-            current_body_lines.append(stripped)
+            current_subheading = None
+            continue
+
+        inline_subheading, inline_body = extract_inline_subheading(
+            stripped,
+            toc_heading_candidates=toc_heading_candidates,
+        )
+
+        if inline_subheading is not None:
+            flush_block()
+
+            matched_toc_heading = match_toc_section_heading(
+                inline_subheading,
+                toc_heading_candidates,
+            )
+
+            if matched_toc_heading is not None:
+                canonical_heading = toc_heading_lookup.get(
+                    matched_toc_heading,
+                    matched_toc_heading,
+                )
+
+                if normalize_heading(inline_subheading) == matched_toc_heading:
+                    current_heading = canonical_heading
+                    current_subheading = None
+                else:
+                    current_heading = canonical_heading
+                    current_subheading = inline_subheading
+            else:
+                current_subheading = inline_subheading
+
+            if inline_body:
+                current_body_lines.append(inline_body)
+
+            continue
+
+        current_body_lines.append(stripped)
 
     flush_block()
-    return blocks
-
+    return blocks, current_heading, current_subheading
 
 def split_text_into_paragraphs(text: str) -> list[str]:
     """
@@ -224,6 +706,8 @@ def split_oversized_block(
             {
                 "page_number": block["page_number"],
                 "heading": block["heading"],
+                "running_header": block.get("running_header"),
+                "subheading": block.get("subheading"),
                 "text": group,
             }
             for group in sentence_groups
@@ -249,6 +733,8 @@ def split_oversized_block(
                 chunks.append({
                     "page_number": block["page_number"],
                     "heading": block["heading"],
+                    "running_header": block.get("running_header"),
+                    "subheading": block.get("subheading"),
                     "text": "\n\n".join(current_parts).strip(),
                 })
                 current_parts = [part]
@@ -259,6 +745,8 @@ def split_oversized_block(
         chunks.append({
             "page_number": block["page_number"],
             "heading": block["heading"],
+            "running_header": block.get("running_header"),
+            "subheading": block.get("subheading"),
             "text": "\n\n".join(current_parts).strip(),
         })
 
@@ -302,10 +790,43 @@ def build_chunks(
     Returns a list of chunk dictionaries.
     """
     pages = parse_cleaned_text_into_pages(cleaned_text)
+    
+    toc_entries = extract_toc_hierarchy(cleaned_text)
+
+    toc_heading_candidates = {
+        normalize_heading(entry["title"])
+        for entry in toc_entries
+        if entry.get("title")
+    }
+
+    toc_heading_lookup = {
+        normalize_heading(entry["title"]): entry["title"]
+        for entry in toc_entries
+        if entry.get("title")
+    }
+
+    major_sections = extract_major_toc_sections(cleaned_text)
+
+    toc_entries = attach_major_sections_to_toc_entries(
+        toc_entries,
+        major_sections,
+    )
+
+    toc_hierarchy_lookup = build_toc_hierarchy_lookup(toc_entries)
 
     raw_blocks: list[dict[str, Any]] = []
+    current_heading: str | None = None
+    current_subheading: str | None = None
+
     for page in pages:
-        page_blocks = split_page_into_blocks(page["page_number"], page["text"])
+        page_blocks, current_heading, current_subheading = split_page_into_blocks(
+            page["page_number"],
+            page["text"],
+            inherited_heading=current_heading,
+            inherited_subheading=current_subheading,
+            toc_heading_candidates=toc_heading_candidates,
+            toc_heading_lookup=toc_heading_lookup,
+        )
         raw_blocks.extend(page_blocks)
 
     raw_blocks = apply_front_matter_rules(raw_blocks)
@@ -324,6 +845,9 @@ def build_chunks(
         char_start = current_offset
         char_end = current_offset + len(block_text)
 
+        heading_key = normalize_heading(block["heading"] or "")
+        hierarchy = toc_hierarchy_lookup.get(heading_key, {})
+
         chunks.append({
             "chunk_id": f"{doc_id}_chunk_{index:04d}",
             "doc_id": doc_id,
@@ -331,6 +855,11 @@ def build_chunks(
             "page_start": block["page_number"],
             "page_end": block["page_number"],
             "section_heading": block["heading"],
+            "subheading": block.get("subheading"),
+            "major_section": hierarchy.get("major_section"),
+            "category": hierarchy.get("category"),
+            "printed_page": hierarchy.get("printed_page"),
+            "running_header": block.get("running_header"),
             "text": block_text,
             "char_count": len(block_text),
             "char_start": char_start,

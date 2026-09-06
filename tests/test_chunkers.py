@@ -4,6 +4,7 @@ from ingestion.chunkers import (
     apply_front_matter_rules,
     build_chunks,
     build_toc_hierarchy_lookup,
+    detect_repeated_page_furniture,
     extract_toc_hierarchy,
     find_source_text_span,
     group_blocks_into_semantic_units,
@@ -15,6 +16,7 @@ from ingestion.chunkers import (
     save_chunks,
     split_oversized_block,
     split_page_into_blocks,
+    strip_repeated_page_furniture,
     split_text_into_paragraphs,
     split_text_into_sentence_groups,
     toc_heading_candidates_for_page,
@@ -474,6 +476,133 @@ def test_build_chunks_returns_empty_list_without_page_markers():
     )
 
     assert result == []
+
+
+def test_repeated_page_furniture_is_removed_only_at_page_edges():
+    pages = [
+        {
+            "page_number": page_number,
+            "text": (
+                "\n".join(
+                    f"Body line {line_number} on page {page_number}."
+                    for line_number in range(1, 10)
+                )
+                + "\n"
+                "Copyright 2016, Industrial Press, Inc.\n"
+                "http://ebooks.industrialpress.com\n"
+                "Machinery's Handbook 30th Edition"
+            ),
+        }
+        for page_number in range(1, 5)
+    ]
+
+    furniture = detect_repeated_page_furniture(pages)
+
+    assert furniture == {
+        "copyright 2016, industrial press, inc.",
+        "http://ebooks.industrialpress.com",
+        "machinery's handbook 30th edition",
+    }
+    filtered = strip_repeated_page_furniture(pages[0]["text"], furniture)
+    assert "Body line 1 on page 1." in filtered
+    assert "Body line 9 on page 1." in filtered
+    assert "Copyright 2016" not in filtered
+
+
+def test_furniture_text_is_preserved_when_it_occurs_inside_page_body():
+    pages = [
+        {
+            "page_number": page_number,
+            "text": (
+                "Opening line.\n"
+                "First body line.\n"
+                "Second body line.\n"
+                "Third body line.\n"
+                "Machinery's Handbook 30th Edition\n"
+                "A citation discusses the title above.\n"
+                "Sixth body line.\n"
+                "Seventh body line.\n"
+                "Eighth body line.\n"
+                f"Closing body line {page_number}.\n"
+                "Repeated footer text"
+            ),
+        }
+        for page_number in range(1, 5)
+    ]
+
+    furniture = detect_repeated_page_furniture(pages)
+    filtered = strip_repeated_page_furniture(pages[0]["text"], furniture)
+
+    assert "Machinery's Handbook 30th Edition" in filtered
+    assert "Repeated footer text" not in filtered
+
+
+def test_furniture_suffix_is_removed_without_deleting_preceding_content():
+    page_text = (
+        "\n".join(f"Body line {index}." for index in range(1, 10))
+        + "\n"
+        "xlog xCopyright 2016, Industrial Press, Inc.\n"
+        "http://ebooks.industrialpress.com\n"
+        "Machinery's Handbook 30th Edition"
+    )
+    furniture = {
+        "copyright 2016, industrial press, inc.",
+        "http://ebooks.industrialpress.com",
+        "machinery's handbook 30th edition",
+    }
+
+    filtered = strip_repeated_page_furniture(page_text, furniture)
+
+    assert filtered.rstrip().endswith("xlog x")
+    assert "Copyright 2016" not in filtered
+
+
+def test_sparse_furniture_only_page_is_fully_removed():
+    page_text = (
+        "Copyright 2016, Industrial Press, Inc.\n"
+        "http://ebooks.industrialpress.com\n"
+        "Machinery's Handbook 30th Edition"
+    )
+    furniture = {
+        "copyright 2016, industrial press, inc.",
+        "http://ebooks.industrialpress.com",
+        "machinery's handbook 30th edition",
+    }
+
+    filtered = strip_repeated_page_furniture(page_text, furniture)
+
+    assert filtered.strip() == ""
+
+
+def test_build_chunks_filters_furniture_without_losing_source_spans():
+    cleaned_text = "\n".join(
+        (
+            f"--- PAGE {page_number} ---\n"
+            "DISCUSSION\n"
+            + "\n".join(
+                f"body line {line_number} for page {page_number}."
+                for line_number in range(1, 9)
+            )
+            + "\n"
+            "Copyright 2016, Industrial Press, Inc.\n"
+            "http://ebooks.industrialpress.com\n"
+            "Machinery's Handbook 30th Edition"
+        )
+        for page_number in range(1, 5)
+    )
+
+    result = build_chunks("document_123", cleaned_text)
+
+    assert len(result) == 4
+    assert all("Copyright" not in chunk["text"] for chunk in result)
+    assert all("industrialpress.com" not in chunk["text"] for chunk in result)
+    assert all("Handbook 30th" not in chunk["text"] for chunk in result)
+    assert all(
+        cleaned_text[
+            chunk["source_char_start"]:chunk["source_char_end"]
+        ] == chunk["text"]
+        for chunk in result
+    )
 
 
 def test_save_chunks(tmp_path):

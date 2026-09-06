@@ -1,6 +1,32 @@
 import archive
 
 
+def test_table_layout_loader_reads_only_linked_shard(tmp_path):
+    shard_directory = tmp_path / "table_layouts"
+    shard_directory.mkdir()
+    shard_path = shard_directory / "page_0008_table_01.json"
+    shard_path.write_text(
+        '{"layout_id":"page_0008_table_01","grid":[["Fit","Use"]]}',
+        encoding="utf-8",
+    )
+    manifest_path = tmp_path / "table_layout.json"
+    manifest_path.write_text(
+        (
+            '{"storage_mode":"sharded","layouts":['
+            '{"layout_id":"page_0008_table_01",'
+            '"file":"table_layouts/page_0008_table_01.json"}]}'
+        ),
+        encoding="utf-8",
+    )
+
+    result = archive.get_table_layout_for_entry(
+        {"table_layout_file": str(manifest_path)},
+        {"table_layout_id": "page_0008_table_01"},
+    )
+
+    assert result["grid"] == [["Fit", "Use"]]
+
+
 def test_structural_segment_uses_verified_source_span(tmp_path, monkeypatch):
     cleaned_text = "Unrelated prefix.\nCorrect complete segment body.\nTrailing text."
     cleaned_text_file = tmp_path / "cleaned_text.txt"

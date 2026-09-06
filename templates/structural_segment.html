@@ -16,6 +16,12 @@
         .segment-meta { color: #aaa; font-size: 0.95rem; margin-bottom: 0.7rem; }
         .preview { white-space: pre-wrap; line-height: 1.5; color: #ddd; }
         .unit-meta { background: #252525; border-left: 4px solid #7bdff2; padding: 0.8rem 1rem; margin-bottom: 1.2rem; color: #ccc; }
+        .table-layout { background: #252525; border: 1px solid #4b6570; border-radius: 8px; padding: 1rem; margin-bottom: 1.2rem; }
+        .table-scroll { overflow-x: auto; margin-top: 0.8rem; }
+        .table-grid { border-collapse: collapse; min-width: 100%; font-size: 0.82rem; }
+        .table-grid td { border: 1px solid #666; padding: 0.45rem; white-space: pre-wrap; vertical-align: top; }
+        .table-fallback { margin-top: 1rem; }
+        .table-fallback summary { cursor: pointer; color: #7bdff2; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -28,6 +34,31 @@
 
     <h1>{% if segment.context_mode == "semantic_unit" %}Semantic Context{% else %}Structural Segment{% endif %}</h1>
     <div class="subtitle">{{ segment.document.title }}</div>
+
+    {% if segment.table_layout %}
+        <div class="table-layout">
+            <strong>{{ segment.table_layout.caption or "Recovered PDF table" }}</strong>
+            <div class="segment-meta">
+                Page {{ segment.table_layout.page_number }} |
+                {{ segment.table_layout.row_count }} detected rows |
+                {{ segment.table_layout.column_count }} detected columns |
+                {{ segment.table_layout.cells|length }} geometric cells
+            </div>
+            <div class="table-scroll">
+                <table class="table-grid">
+                    {% for row in segment.table_layout.grid %}
+                    <tr>
+                        {% for cell in row %}<td>{{ cell or "" }}</td>{% endfor %}
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <details class="table-fallback">
+                <summary>Coordinate-derived reading order</summary>
+                <div class="preview">{{ segment.table_layout.reading_order_text }}</div>
+            </details>
+        </div>
+    {% endif %}
 
     {% if segment.context_mode == "semantic_unit" %}
         <div class="unit-meta">

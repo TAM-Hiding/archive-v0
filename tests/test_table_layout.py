@@ -3,6 +3,7 @@ from ingestion.table_layout import (
     group_words_into_positioned_lines,
     match_layout_to_caption,
     normalize_table_caption,
+    write_sharded_table_layout_store,
 )
 
 
@@ -60,3 +61,32 @@ def test_match_layout_to_caption_does_not_guess_between_multiple_tables():
     ]
 
     assert match_layout_to_caption(layouts, 2, "Table 7. Gamma") is None
+
+
+def test_write_sharded_table_layout_store_creates_compact_manifest(tmp_path):
+    layout_path = tmp_path / "table_layout.json"
+    payload = {
+        "doc_id": "doc_001",
+        "source_filename": "handbook.pdf",
+        "layouts": [{
+            "layout_id": "page_0008_table_01",
+            "page_number": 8,
+            "table_index": 1,
+            "caption": "Table 1. Preferred Fits",
+            "bbox": [10, 20, 100, 200],
+            "row_count": 4,
+            "column_count": 3,
+            "grid": [["Fit", "Shaft", "Hole"]],
+            "cells": [{"text": "Fit"}],
+            "reading_order_text": "Fit Shaft Hole",
+        }],
+    }
+
+    manifest = write_sharded_table_layout_store(layout_path, payload)
+
+    assert manifest["storage_mode"] == "sharded"
+    assert manifest["layout_count"] == 1
+    assert "grid" not in manifest["layouts"][0]
+    shard_path = tmp_path / manifest["layouts"][0]["file"]
+    assert shard_path.is_file()
+    assert "Fit Shaft Hole" in shard_path.read_text(encoding="utf-8")

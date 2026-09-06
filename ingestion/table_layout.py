@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any, Iterable
@@ -210,3 +211,56 @@ def match_layout_to_caption(
         return candidates[0]
 
     return None
+
+
+def write_sharded_table_layout_store(
+    layout_path: str | Path,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Write one small JSON file per table and a compact manifest."""
+    manifest_path = Path(layout_path)
+    shard_directory = manifest_path.with_name("table_layouts")
+    shard_directory.mkdir(parents=True, exist_ok=True)
+    manifest_layouts: list[dict[str, Any]] = []
+
+    for layout in payload.get("layouts", []):
+        layout_id = str(layout.get("layout_id", ""))
+        if not layout_id or Path(layout_id).name != layout_id:
+            raise ValueError(f"Invalid table layout ID: {layout_id!r}")
+
+        shard_path = shard_directory / f"{layout_id}.json"
+        temporary_shard_path = shard_directory / f".{layout_id}.tmp.json"
+        temporary_shard_path.write_text(
+            json.dumps(layout, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        temporary_shard_path.replace(shard_path)
+
+        manifest_layouts.append({
+            "layout_id": layout_id,
+            "page_number": layout.get("page_number"),
+            "table_index": layout.get("table_index"),
+            "caption": layout.get("caption", ""),
+            "bbox": layout.get("bbox", []),
+            "row_count": layout.get("row_count", 0),
+            "column_count": layout.get("column_count", 0),
+            "file": str(Path(shard_directory.name) / shard_path.name),
+        })
+
+    manifest = {
+        "schema_version": 1,
+        "storage_mode": "sharded",
+        "doc_id": payload.get("doc_id", ""),
+        "source_filename": payload.get("source_filename", ""),
+        "layout_count": len(manifest_layouts),
+        "layouts": manifest_layouts,
+    }
+    temporary_manifest_path = manifest_path.with_name(
+        f".{manifest_path.name}.tmp"
+    )
+    temporary_manifest_path.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    temporary_manifest_path.replace(manifest_path)
+    return manifest

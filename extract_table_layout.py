@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from ingestion.registry import DOCUMENTS_ROOT, write_metadata
-from ingestion.table_layout import extract_pdf_table_layouts, match_layout_to_caption
+from ingestion.table_layout import (
+    extract_pdf_table_layouts,
+    match_layout_to_caption,
+    write_sharded_table_layout_store,
+)
 
 
 def extract_document_table_layout(
@@ -90,22 +94,18 @@ def extract_document_table_layout(
         "layout_count": len(layouts),
         "layouts": layouts,
     }
-    temporary_layout_path = doc_root / "table_layout.extract.tmp.json"
     temporary_index_path = doc_root / "structural_index.table-layout.tmp.json"
-    temporary_layout_path.write_text(
-        json.dumps(layout_payload, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    write_sharded_table_layout_store(layout_path, layout_payload)
     temporary_index_path.write_text(
         json.dumps(entries, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    temporary_layout_path.replace(layout_path)
     temporary_index_path.replace(structural_index_path)
 
     extracted_at = datetime.now().isoformat(timespec="seconds")
     metadata.update({
         "table_layout_file": str(layout_path),
+        "table_layout_storage_mode": "sharded",
         "table_layout_count": len(layouts),
         "table_layout_linked_entry_count": linked_entry_count,
         "table_layout_extracted_at": extracted_at,

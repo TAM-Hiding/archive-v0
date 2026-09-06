@@ -35,11 +35,19 @@ python3 extract_table_layout.py DOCUMENT_ID
 ```
 
 The command reads the Archive's stored source PDF, inspects only pages already
-classified as containing tables, and writes `table_layout.json` beside the
-document metadata. It preserves detected cells, merged grid positions, and
-positioned text lines; links matching structural entries by caption and page;
-and adds coordinate-derived reading order to table search text. Existing
+classified as containing tables. It writes a compact `table_layout.json`
+manifest plus one JSON file per table under `table_layouts/`. The table shards
+preserve detected cells, merged grid positions, and positioned text lines; the
+manifest links matching structural entries by caption and page. The command
+also adds coordinate-derived reading order to table search text. Existing
 metadata and structural-index files are backed up before replacement.
+
+Older monolithic table-layout files can be converted without rescanning the
+source PDF:
+
+```bash
+python3 shard_table_layout.py DOCUMENT_ID
+```
 
 ## Project Structure
 

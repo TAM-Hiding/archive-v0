@@ -599,12 +599,18 @@ def get_structural_segment(doc_id, entry_index):
         entry = entries[index]
         body = entry.get("preview", "")
 
-        char_start = entry.get("char_start")
-        char_end = entry.get("char_end")
+        source_char_start = entry.get("source_char_start")
+        source_char_end = entry.get("source_char_end")
 
-        if cleaned_text and char_start is not None and char_end is not None:
+        if (
+            cleaned_text
+            and source_char_start is not None
+            and source_char_end is not None
+        ):
             try:
-                body = cleaned_text[int(char_start):int(char_end)].strip()
+                body = cleaned_text[
+                    int(source_char_start):int(source_char_end)
+                ].strip()
             except (TypeError, ValueError):
                 body = entry.get("preview", "")
 

@@ -211,3 +211,74 @@ def test_structural_index_entries_are_searchable(tmp_path, monkeypatch):
     assert result["meta"]["page_start"] == 42
     assert result["meta"]["structural_hit"] is True
     assert "woodruff" in result["body_search"]
+
+
+def test_structural_table_search_uses_caption_and_full_table_text(
+    tmp_path,
+    monkeypatch,
+):
+    import json
+    import archive
+
+    structural_index_file = tmp_path / "structural_index.json"
+    structural_index_file.write_text(
+        json.dumps([
+            {
+                "entry_index": 0,
+                "chunk_index": 1,
+                "page_start": 2499,
+                "page_end": 2499,
+                "section_heading": "Advantages of Woodruff Keys",
+                "content_type": "table",
+                "retrieval_chunk_index": 1,
+                "retrieval_chunk_count": 2,
+                "table_caption": (
+                    "Table 6. Keyway Dimensions for Metric Woodruff Keys"
+                ),
+                "preview": "Table headers appear here.",
+                "search_text": "Table 6. Metric Woodruff table headers.",
+            },
+            {
+                "entry_index": 1,
+                "chunk_index": 2,
+                "page_start": 2499,
+                "page_end": 2499,
+                "section_heading": "Advantages of Woodruff Keys",
+                "content_type": "table",
+                "retrieval_chunk_index": 2,
+                "retrieval_chunk_count": 2,
+                "table_caption": (
+                    "Table 6. Keyway Dimensions for Metric Woodruff Keys"
+                ),
+                "preview": "Later table rows appear here.",
+                "search_text": "Later rows contain deepvalue data.",
+            },
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        archive,
+        "list_ingested_documents",
+        lambda: [{
+            "doc_id": "doc_001",
+            "title": "Machinery's Handbook",
+            "source_filename": "Machinery.pdf",
+            "category_path": "reference/machining",
+            "chunk_storage_mode": "structural_only",
+            "structural_index_file": str(structural_index_file),
+        }],
+    )
+
+    results = archive.search_structural_entries("deepvalue")
+
+    assert len(results) == 1
+    _, result = results[0]
+    assert result["title"].startswith("Table 6.")
+    assert result["meta"]["content_type"] == "table"
+    assert "deepvalue" in result["body"]
+    assert "deepvalue" in result["body_search"]
+
+    caption_results = archive.search_structural_entries("metric")
+
+    assert len(caption_results) == 1
+    assert caption_results[0][1]["meta"]["entry_index"] == 0

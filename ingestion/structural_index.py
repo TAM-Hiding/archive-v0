@@ -18,6 +18,7 @@ def build_structural_index(chunks: list[dict[str, Any]], preview_chars: int = 22
     for entry_index, chunk in enumerate(chunks):
         text = chunk.get("text", "").strip()
         preview = text[:preview_chars]
+        content_type = chunk.get("content_type", "prose")
 
         if len(text) > preview_chars:
             preview += "..."
@@ -37,6 +38,8 @@ def build_structural_index(chunks: list[dict[str, Any]], preview_chars: int = 22
             "page_end": chunk.get("page_end"),
             "section_heading": chunk.get("section_heading") or "",
             "subheading": chunk.get("subheading") or "",
+            "content_type": content_type,
+            "table_caption": chunk.get("table_caption") or "",
             "major_section": chunk.get("major_section") or "",
             "category": chunk.get("category") or "",
             "printed_page": chunk.get("printed_page"),
@@ -53,6 +56,7 @@ def build_structural_index(chunks: list[dict[str, Any]], preview_chars: int = 22
             "source_char_start": chunk.get("source_char_start"),
             "source_char_end": chunk.get("source_char_end"),
             "preview": preview,
+            "search_text": text if content_type == "table" else "",
         })
 
     return index_entries

@@ -75,6 +75,8 @@ def chunk_to_note_text(chunk: dict[str, Any], metadata: dict[str, Any]) -> str:
         f"page_start: {chunk['page_start']}",
         f"page_end: {chunk['page_end']}",
         f"section_heading: {section_heading}",
+        f"content_type: {chunk.get('content_type', 'prose')}",
+        f"table_caption: {chunk.get('table_caption', '')}",
         f"char_count: {chunk['char_count']}",
         "",
         chunk["text"].strip(),

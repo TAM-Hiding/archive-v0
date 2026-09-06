@@ -102,3 +102,46 @@ def test_semantic_context_template_renders_children_and_highlights_match():
     normalized_html = " ".join(html.split())
     assert "Matched Entry 8" in normalized_html
     assert 'class="segment current"' in html
+
+
+def test_semantic_context_template_identifies_table_unit():
+    segment = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "context_mode": "semantic_unit",
+        "matched_entry_index": 1,
+        "semantic_unit": {
+            "page_start": 2499,
+            "page_end": 2499,
+            "char_count": 1769,
+            "retrieval_chunk_count": 1,
+            "section_heading": "Advantages of Woodruff Keys",
+            "subheading": None,
+            "content_type": "table",
+            "table_caption": "Table 6. Keyway Dimensions",
+        },
+        "context_entries": [{
+            "entry_index": 1,
+            "entry": {
+                "chunk_index": 2,
+                "retrieval_chunk_index": 1,
+                "retrieval_chunk_count": 1,
+                "page_start": 2499,
+                "page_end": 2499,
+                "char_count": 1769,
+                "content_type": "table",
+                "section_heading": "Advantages of Woodruff Keys",
+            },
+            "body": "Table 6. Keyway Dimensions",
+        }],
+        "previous": None,
+        "current": None,
+        "next": None,
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_segment.html", segment=segment)
+
+    assert "Table 6. Keyway Dimensions" in html
+    normalized_html = " ".join(html.split())
+    assert "1769 chars" in normalized_html
+    assert "| Table | Advantages of Woodruff Keys" in normalized_html

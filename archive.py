@@ -242,17 +242,24 @@ def search_structural_entries(query):
 
         for entry in entries:
             heading = entry.get("section_heading", "")
+            table_caption = entry.get("table_caption", "")
             preview = entry.get("preview", "")
+            searchable_text = entry.get("search_text") or preview
 
             heading_search = heading.lower()
-            preview_search = preview.lower()
+            table_caption_search = table_caption.lower()
+            content_search = searchable_text.lower()
+            retrieval_chunk_index = entry.get("retrieval_chunk_index")
+            is_first_retrieval_chunk = retrieval_chunk_index in (None, 1)
 
             score = 0
 
             for term in query_terms:
                 if term in heading_search:
                     score += 5
-                if term in preview_search:
+                if is_first_retrieval_chunk and term in table_caption_search:
+                    score += 5
+                if term in content_search:
                     score += 1
 
             if score <= 0:
@@ -260,8 +267,8 @@ def search_structural_entries(query):
 
             result = {
                 "id": f"structural:{document['doc_id']}:{entry['entry_index']}",
-                "title": heading or document.get("title", ""),
-                "title_search": heading_search,
+                "title": table_caption or heading or document.get("title", ""),
+                "title_search": table_caption_search or heading_search,
                 "tags": [],
                 "aliases": [],
                 "meta": {
@@ -285,12 +292,14 @@ def search_structural_entries(query):
                     ),
                     "retrieval_chunk_index": entry.get("retrieval_chunk_index"),
                     "retrieval_chunk_count": entry.get("retrieval_chunk_count"),
+                    "content_type": entry.get("content_type", "prose"),
+                    "table_caption": table_caption,
                     "page_start": entry.get("page_start"),
                     "page_end": entry.get("page_end"),
                     "structural_hit": True,
                 },
-                "body": preview,
-                "body_search": preview_search,
+                "body": searchable_text,
+                "body_search": content_search,
                 "path": structural_index_file,
                 "relative_path": structural_index_file,
                 "path_search": structural_index_file.lower().replace("_", " "),
@@ -692,6 +701,8 @@ def get_structural_segment(doc_id, entry_index):
             ) or len(context_entries),
             "section_heading": current_entry.get("section_heading"),
             "subheading": current_entry.get("subheading"),
+            "content_type": current_entry.get("content_type", "prose"),
+            "table_caption": current_entry.get("table_caption"),
         }
 
     return {

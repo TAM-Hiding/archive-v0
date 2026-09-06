@@ -25,6 +25,8 @@ def test_index_chunks_to_generated_notes(tmp_path, monkeypatch):
             "page_start": 1,
             "page_end": 1,
             "section_heading": "Introduction",
+            "content_type": "table",
+            "table_caption": "Table 1. Test Results",
             "char_count": 24,
             "text": "This is the first chunk.",
         },
@@ -77,6 +79,8 @@ def test_index_chunks_to_generated_notes(tmp_path, monkeypatch):
     assert "title: Test Document - chunk 0001" in first_note
     assert "source_doc_id: test_doc_001" in first_note
     assert "section_heading: Introduction" in first_note
+    assert "content_type: table" in first_note
+    assert "table_caption: Table 1. Test Results" in first_note
     assert "semantic_unit_id: test_doc_001_unit_0001" in first_note
     assert "semantic_unit_page_start: 1" in first_note
     assert "semantic_unit_page_end: 1" in first_note

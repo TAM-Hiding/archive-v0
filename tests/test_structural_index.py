@@ -17,6 +17,8 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "page_end": 29,
             "section_heading": "Imaginary and Complex Numbers",
             "subheading": "Operations on Complex Numbers",
+            "content_type": "prose",
+            "table_caption": None,
             "major_section": "MATHEMATICS",
             "category": "NUMBERS, FRACTIONS, AND DECIMALS",
             "printed_page": 15,
@@ -51,6 +53,8 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "page_end": 29,
             "section_heading": "Imaginary and Complex Numbers",
             "subheading": "Operations on Complex Numbers",
+            "content_type": "prose",
+            "table_caption": "",
             "major_section": "MATHEMATICS",
             "category": "NUMBERS, FRACTIONS, AND DECIMALS",
             "printed_page": 15,
@@ -64,6 +68,7 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "source_char_start": 220,
             "source_char_end": 254,
             "preview": "Continued complex-number operations.",
+            "search_text": "",
         }
     ]
 

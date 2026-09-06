@@ -31,7 +31,9 @@
 
     {% if segment.context_mode == "semantic_unit" %}
         <div class="unit-meta">
-            {% if segment.semantic_unit.subheading %}
+            {% if segment.semantic_unit.table_caption %}
+                <strong>{{ segment.semantic_unit.table_caption }}</strong> —
+            {% elif segment.semantic_unit.subheading %}
                 <strong>{{ segment.semantic_unit.subheading }}</strong> —
             {% elif segment.semantic_unit.section_heading %}
                 <strong>{{ segment.semantic_unit.section_heading }}</strong> —
@@ -51,6 +53,9 @@
                 Chunk {{ item.entry.chunk_index }} |
                 Pages {{ item.entry.page_start }}–{{ item.entry.page_end }} |
                 {{ item.entry.char_count }} chars
+                {% if item.entry.content_type == "table" %} |
+                Table
+                {% endif %}
                 {% if item.entry.section_heading %} |
                 {{ item.entry.section_heading }}
                 {% endif %}

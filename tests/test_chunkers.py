@@ -5,6 +5,7 @@ from ingestion.chunkers import (
     build_chunks,
     build_toc_hierarchy_lookup,
     extract_toc_hierarchy,
+    find_source_text_span,
     infer_printed_page_offset,
     is_likely_heading,
     normalize_heading,
@@ -51,16 +52,15 @@ def test_parse_cleaned_text_into_pages():
 
     result = parse_cleaned_text_into_pages(cleaned_text)
 
-    assert result == [
-        {
-            "page_number": 1,
-            "text": "First page text.",
-        },
-        {
-            "page_number": 2,
-            "text": "Second page text.",
-        },
+    assert [page["page_number"] for page in result] == [1, 2]
+    assert [page["text"] for page in result] == [
+        "First page text.",
+        "Second page text.",
     ]
+    for page in result:
+        assert cleaned_text[
+            page["source_char_start"]:page["source_char_end"]
+        ] == page["text"]
 
 
 def test_text_before_first_page_marker_is_ignored():
@@ -72,12 +72,24 @@ def test_text_before_first_page_marker_is_ignored():
 
     result = parse_cleaned_text_into_pages(cleaned_text)
 
-    assert result == [
-        {
-            "page_number": 1,
-            "text": "Marked content.",
-        }
-    ]
+    assert len(result) == 1
+    assert result[0]["page_number"] == 1
+    assert result[0]["text"] == "Marked content."
+    assert cleaned_text[
+        result[0]["source_char_start"]:result[0]["source_char_end"]
+    ] == "Marked content."
+
+
+def test_find_source_text_span_allows_normalized_whitespace():
+    source = "Alpha body spans\nmultiple   source lines."
+
+    span = find_source_text_span(
+        "Alpha body spans multiple source lines.",
+        source,
+    )
+
+    assert span is not None
+    assert source[slice(*span)] == source
 
 
 def test_split_page_into_heading_blocks():
@@ -420,12 +432,18 @@ def test_build_chunks_creates_expected_metadata():
     assert first_chunk["char_count"] == len(first_chunk["text"])
     assert first_chunk["char_start"] == 0
     assert first_chunk["char_end"] == len(first_chunk["text"])
+    assert cleaned_text[
+        first_chunk["source_char_start"]:first_chunk["source_char_end"]
+    ] == first_chunk["text"]
 
     assert second_chunk["chunk_id"] == "document_123_chunk_0002"
     assert second_chunk["chunk_index"] == 2
     assert second_chunk["page_start"] == 2
     assert second_chunk["section_heading"] == "RESULTS"
     assert second_chunk["char_start"] == first_chunk["char_end"]
+    assert cleaned_text[
+        second_chunk["source_char_start"]:second_chunk["source_char_end"]
+    ] == second_chunk["text"]
 
 
 def test_build_chunks_returns_empty_list_without_page_markers():

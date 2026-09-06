@@ -188,7 +188,7 @@
         <div class="result">
             <div class="title">
                 {% if note.meta.structural_hit %}
-                    <a href="/curator/document/{{ note.meta.source_doc_id }}/structure/{{ note.meta.entry_index }}"
+                    <a href="{{ url_for('curator_document_structure_entry', doc_id=note.meta.source_doc_id, entry_index=note.meta.entry_index) }}"
                        style="color: #ffd166; text-decoration: none;">
                         {{ note.title }}
                     </a>
@@ -198,7 +198,20 @@
                     </a>
                 {% endif %}
 
-                {% if note.is_generated and note.meta.chunk_storage_mode == "structural_only" %}
+                {% if note.meta.structural_hit %}
+                    <span style="margin-left: 1rem;">
+                        <a href="{{ url_for('curator_document', doc_id=note.meta.source_doc_id) }}" style="color: #7bdff2; text-decoration: none;">[Details]</a>
+                    </span>
+
+                    <span style="margin-left: 0.75rem;">
+                        <a href="{{ url_for('curator_document_structure_entry', doc_id=note.meta.source_doc_id, entry_index=note.meta.entry_index) }}" style="color: #7bdff2; text-decoration: none;">[Context]</a>
+                    </span>
+
+                    <span style="margin-left: 0.75rem;">
+                        <a href="{{ url_for('curator_document_source', doc_id=note.meta.source_doc_id) }}" style="color: #7bdff2; text-decoration: none;">[Source]</a>
+                    </span>
+
+                {% elif note.is_generated and note.meta.chunk_storage_mode == "structural_only" %}
                     <span style="margin-left: 1rem;">
                         <a href="/curator/document/{{ note.meta.source_doc_id }}" style="color: #7bdff2; text-decoration: none;">[Details]</a>
                     </span>

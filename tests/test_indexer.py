@@ -16,6 +16,10 @@ def test_index_chunks_to_generated_notes(tmp_path, monkeypatch):
             "chunk_index": 1,
             "semantic_unit_id": "test_doc_001_unit_0001",
             "semantic_unit_index": 1,
+            "semantic_unit_page_start": 1,
+            "semantic_unit_page_end": 1,
+            "semantic_unit_char_count": 24,
+            "semantic_unit_block_count": 1,
             "retrieval_chunk_index": 1,
             "retrieval_chunk_count": 1,
             "page_start": 1,
@@ -74,6 +78,8 @@ def test_index_chunks_to_generated_notes(tmp_path, monkeypatch):
     assert "source_doc_id: test_doc_001" in first_note
     assert "section_heading: Introduction" in first_note
     assert "semantic_unit_id: test_doc_001_unit_0001" in first_note
+    assert "semantic_unit_page_start: 1" in first_note
+    assert "semantic_unit_page_end: 1" in first_note
     assert "retrieval_chunk_index: 1" in first_note
     assert "retrieval_chunk_count: 1" in first_note
     assert "This is the first chunk." in first_note

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 import json
@@ -295,18 +296,17 @@ def attach_major_sections_to_toc_entries(
 
 def build_toc_hierarchy_lookup(
     entries: list[dict[str, Any]],
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, list[dict[str, Any]]]:
     """
-    Build a normalized heading lookup for TOC hierarchy metadata.
+    Build a lossless normalized heading lookup for TOC hierarchy metadata.
 
     Example:
-        "logarithms" -> {
-            "major_section": "MATHEMATICS",
-            "category": "NUMBERS, FRACTIONS, AND DECIMALS",
-            "printed_page": 14,
-        }
+        "logarithms" -> [{...}]
+
+    A title can occur in multiple document locations. Preserve every
+    candidate here so document position can resolve the correct record.
     """
-    lookup: dict[str, dict[str, Any]] = {}
+    lookup: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     for entry in entries:
         title = entry.get("title")
@@ -316,13 +316,105 @@ def build_toc_hierarchy_lookup(
 
         key = normalize_heading(title)
 
-        lookup[key] = {
+        lookup[key].append({
             "major_section": entry.get("major_section"),
             "category": entry.get("category"),
             "printed_page": entry.get("printed_page"),
-        }
+        })
 
-    return lookup
+    return dict(lookup)
+
+
+def infer_printed_page_offset(
+    pages: list[dict[str, Any]],
+    toc_entries: list[dict[str, Any]],
+) -> int | None:
+    """Infer physical-PDF-page minus printed-page alignment.
+
+    Only unambiguous TOC titles and exact standalone body lines vote. If
+    fewer than three records agree on the most common offset, the document
+    does not provide enough evidence and ambiguous hierarchy stays unset.
+    """
+    entries_by_title: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for entry in toc_entries:
+        title = entry.get("title")
+        printed_page = entry.get("printed_page")
+        if title and printed_page is not None:
+            entries_by_title[normalize_heading(title)].append(entry)
+
+    body_pages_by_line: dict[str, set[int]] = defaultdict(set)
+    for page in pages:
+        if looks_like_toc_page(page["text"]):
+            continue
+        for line in page["text"].splitlines():
+            stripped = line.strip()
+            if stripped:
+                body_pages_by_line[normalize_heading(stripped)].add(
+                    page["page_number"]
+                )
+
+    offsets: list[int] = []
+    for title, entries in entries_by_title.items():
+        body_pages = body_pages_by_line.get(title, set())
+        if len(entries) != 1 or len(body_pages) != 1:
+            continue
+
+        physical_page = next(iter(body_pages))
+        printed_page = entries[0]["printed_page"]
+        offsets.append(physical_page - printed_page)
+
+    if not offsets:
+        return None
+
+    ranked_offsets = Counter(offsets).most_common(2)
+    offset, votes = ranked_offsets[0]
+    if votes < 3:
+        return None
+
+    if len(ranked_offsets) > 1 and ranked_offsets[1][1] == votes:
+        return None
+
+    return offset
+
+
+def resolve_toc_hierarchy(
+    heading: str | None,
+    physical_page: int,
+    hierarchy_lookup: dict[str, list[dict[str, Any]]],
+    printed_page_offset: int | None,
+) -> dict[str, Any]:
+    """Resolve one hierarchy record without silently discarding duplicates."""
+    candidates = hierarchy_lookup.get(normalize_heading(heading or ""), [])
+
+    if len(candidates) == 1:
+        return candidates[0]
+
+    if not candidates or printed_page_offset is None:
+        return {}
+
+    estimated_printed_page = physical_page - printed_page_offset
+    positioned = [
+        candidate
+        for candidate in candidates
+        if candidate.get("printed_page") is not None
+    ]
+
+    if not positioned:
+        return {}
+
+    preceding = [
+        candidate
+        for candidate in positioned
+        if candidate["printed_page"] <= estimated_printed_page
+    ]
+
+    if preceding:
+        return max(preceding, key=lambda item: item["printed_page"])
+
+    return min(
+        positioned,
+        key=lambda item: abs(item["printed_page"] - estimated_printed_page),
+    )
 
 def parse_cleaned_text_into_pages(cleaned_text: str) -> list[dict[str, Any]]:
     """
@@ -813,6 +905,7 @@ def build_chunks(
     )
 
     toc_hierarchy_lookup = build_toc_hierarchy_lookup(toc_entries)
+    printed_page_offset = infer_printed_page_offset(pages, toc_entries)
 
     raw_blocks: list[dict[str, Any]] = []
     current_heading: str | None = None
@@ -845,8 +938,12 @@ def build_chunks(
         char_start = current_offset
         char_end = current_offset + len(block_text)
 
-        heading_key = normalize_heading(block["heading"] or "")
-        hierarchy = toc_hierarchy_lookup.get(heading_key, {})
+        hierarchy = resolve_toc_hierarchy(
+            block["heading"],
+            block["page_number"],
+            toc_hierarchy_lookup,
+            printed_page_offset,
+        )
 
         chunks.append({
             "chunk_id": f"{doc_id}_chunk_{index:04d}",

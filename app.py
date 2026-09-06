@@ -50,6 +50,12 @@ def index():
         elif query:
             results, expanded_terms = archive.search_notes(query.lower(), notes, vocabulary, scope=scope)
 
+            if scope in ("all", "reference"):
+                structural_results = archive.search_structural_entries(query)
+                results.extend(structural_results)
+                results.sort(reverse=True, key=lambda x: x[0])
+                results = results[:5]
+
             highlighted_results = []
 
             for score, note in results:

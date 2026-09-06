@@ -187,9 +187,16 @@
     {% for score, note, preview in results %}
         <div class="result">
             <div class="title">
-                <a href="/note/{{ note.id }}" style="color: #ffd166; text-decoration: none;">
-                    {{ note.title }}
-                </a>
+                {% if note.meta.structural_hit %}
+                    <a href="/curator/document/{{ note.meta.source_doc_id }}/structure/{{ note.meta.entry_index }}"
+                       style="color: #ffd166; text-decoration: none;">
+                        {{ note.title }}
+                    </a>
+                {% else %}
+                    <a href="/note/{{ note.id }}" style="color: #ffd166; text-decoration: none;">
+                        {{ note.title }}
+                    </a>
+                {% endif %}
 
                 {% if note.is_generated and note.meta.chunk_storage_mode == "structural_only" %}
                     <span style="margin-left: 1rem;">

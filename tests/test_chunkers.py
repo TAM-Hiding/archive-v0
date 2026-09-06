@@ -2,9 +2,12 @@ import json
 
 from ingestion.chunkers import (
     build_chunks,
+    build_toc_hierarchy_lookup,
+    infer_printed_page_offset,
     is_likely_heading,
     normalize_heading,
     parse_cleaned_text_into_pages,
+    resolve_toc_hierarchy,
     save_chunks,
     split_oversized_block,
     split_page_into_blocks,
@@ -455,3 +458,109 @@ def test_oversized_paragraph_inside_multi_paragraph_block_is_split():
 
     assert len(chunks) > 1
     assert all(len(chunk["text"]) <= max_chars for chunk in chunks)
+
+
+def test_toc_hierarchy_lookup_preserves_duplicate_title_candidates():
+    entries = [
+        {
+            "title": "Introduction",
+            "major_section": "MACHINING OPERATIONS",
+            "category": "MICROMACHINING",
+            "printed_page": 1128,
+        },
+        {
+            "title": "Introduction",
+            "major_section": "MACHINE ELEMENTS",
+            "category": "FLUID POWER",
+            "printed_page": 2667,
+        },
+    ]
+
+    lookup = build_toc_hierarchy_lookup(entries)
+
+    assert [item["printed_page"] for item in lookup["introduction"]] == [
+        1128,
+        2667,
+    ]
+
+
+def test_infer_printed_page_offset_uses_exact_unambiguous_headings():
+    pages = [
+        {"page_number": 22, "text": "Alpha"},
+        {"page_number": 32, "text": "Beta"},
+        {"page_number": 42, "text": "Gamma"},
+    ]
+    entries = [
+        {"title": "Alpha", "printed_page": 10},
+        {"title": "Beta", "printed_page": 20},
+        {"title": "Gamma", "printed_page": 30},
+    ]
+
+    assert infer_printed_page_offset(pages, entries) == 12
+
+
+def test_infer_printed_page_offset_rejects_tied_evidence():
+    pages = [
+        {"page_number": 11, "text": "Alpha"},
+        {"page_number": 21, "text": "Beta"},
+        {"page_number": 31, "text": "Gamma"},
+        {"page_number": 52, "text": "Delta"},
+        {"page_number": 62, "text": "Epsilon"},
+        {"page_number": 72, "text": "Zeta"},
+    ]
+    entries = [
+        {"title": "Alpha", "printed_page": 10},
+        {"title": "Beta", "printed_page": 20},
+        {"title": "Gamma", "printed_page": 30},
+        {"title": "Delta", "printed_page": 50},
+        {"title": "Epsilon", "printed_page": 60},
+        {"title": "Zeta", "printed_page": 70},
+    ]
+
+    assert infer_printed_page_offset(pages, entries) is None
+
+
+def test_ambiguous_toc_hierarchy_resolves_by_document_position():
+    lookup = build_toc_hierarchy_lookup(
+        [
+            {
+                "title": "Introduction",
+                "major_section": "MACHINING OPERATIONS",
+                "category": "MICROMACHINING",
+                "printed_page": 1128,
+            },
+            {
+                "title": "Introduction",
+                "major_section": "MACHINE ELEMENTS",
+                "category": "FLUID POWER",
+                "printed_page": 2667,
+            },
+        ]
+    )
+
+    result = resolve_toc_hierarchy(
+        "Introduction",
+        physical_page=2679,
+        hierarchy_lookup=lookup,
+        printed_page_offset=12,
+    )
+
+    assert result["major_section"] == "MACHINE ELEMENTS"
+    assert result["category"] == "FLUID POWER"
+    assert result["printed_page"] == 2667
+
+
+def test_ambiguous_toc_hierarchy_remains_unset_without_page_alignment():
+    lookup = build_toc_hierarchy_lookup(
+        [
+            {"title": "Definitions", "printed_page": 623},
+            {"title": "Definitions", "printed_page": 1436},
+        ]
+    )
+
+    assert resolve_toc_hierarchy(
+        "Definitions",
+        physical_page=1448,
+        hierarchy_lookup=lookup,
+        printed_page_offset=None,
+    ) == {}

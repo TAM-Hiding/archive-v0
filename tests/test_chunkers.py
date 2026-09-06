@@ -188,6 +188,120 @@ def test_non_toc_title_case_line_is_not_promoted_to_heading():
     assert blocks[1]["heading"] == "Logarithms"
     assert final_heading == "Logarithms"
 
+
+def test_exact_inline_toc_heading_is_promoted_to_peer_section():
+    blocks, final_heading, final_subheading = split_page_into_blocks(
+        29,
+        "Permutations.-Body text about permutations.",
+        inherited_heading="Factorial",
+        inherited_subheading="Factorial Notation",
+        toc_heading_candidates={"factorial", "permutations"},
+        toc_heading_lookup={
+            "factorial": "Factorial",
+            "permutations": "Permutations",
+        },
+    )
+
+    assert blocks == [
+        {
+            "page_number": 29,
+            "heading": "Permutations",
+            "subheading": None,
+            "running_header": None,
+            "text": "Body text about permutations.",
+        }
+    ]
+    assert final_heading == "Permutations"
+    assert final_subheading is None
+
+
+def test_expanded_inline_toc_heading_preserves_subheading():
+    blocks, final_heading, final_subheading = split_page_into_blocks(
+        29,
+        "Factorial Notation.-Body text about factorials.",
+        inherited_heading="Imaginary and Complex Numbers",
+        inherited_subheading="Operations on Complex Numbers",
+        toc_heading_candidates={"factorial"},
+        toc_heading_lookup={"factorial": "Factorial"},
+    )
+
+    assert blocks == [
+        {
+            "page_number": 29,
+            "heading": "Factorial",
+            "subheading": "Factorial Notation",
+            "running_header": None,
+            "text": "Body text about factorials.",
+        }
+    ]
+    assert final_heading == "Factorial"
+    assert final_subheading == "Factorial Notation"
+
+
+def test_expanded_standalone_toc_heading_preserves_subheading():
+    blocks, final_heading, final_subheading = split_page_into_blocks(
+        29,
+        (
+            "Prime Numbers and Factors of Numbers\n"
+            "Body text about prime numbers and factors."
+        ),
+        inherited_heading="Combinations",
+        toc_heading_candidates={"prime numbers and factors"},
+        toc_heading_lookup={
+            "prime numbers and factors": "Prime Numbers and Factors",
+        },
+    )
+
+    assert blocks == [
+        {
+            "page_number": 29,
+            "heading": "Prime Numbers and Factors",
+            "subheading": "Prime Numbers and Factors of Numbers",
+            "running_header": None,
+            "text": "Body text about prime numbers and factors.",
+        }
+    ]
+    assert final_heading == "Prime Numbers and Factors"
+    assert final_subheading == "Prime Numbers and Factors of Numbers"
+
+
+def test_inline_subheading_state_persists_across_pages():
+    toc_candidates = {"imaginary and complex numbers"}
+    toc_lookup = {
+        "imaginary and complex numbers": "Imaginary and Complex Numbers",
+    }
+
+    blocks_28, final_heading, final_subheading = split_page_into_blocks(
+        28,
+        "Operations on Complex Numbers.-Body starts on this page.",
+        inherited_heading="Imaginary and Complex Numbers",
+        toc_heading_candidates=toc_candidates,
+        toc_heading_lookup=toc_lookup,
+    )
+
+    blocks_29, final_heading, final_subheading = split_page_into_blocks(
+        29,
+        "Continued body on the next page.",
+        inherited_heading=final_heading,
+        inherited_subheading=final_subheading,
+        toc_heading_candidates=toc_candidates,
+        toc_heading_lookup=toc_lookup,
+    )
+
+    assert blocks_28[0]["heading"] == "Imaginary and Complex Numbers"
+    assert blocks_28[0]["subheading"] == "Operations on Complex Numbers"
+    assert blocks_29 == [
+        {
+            "page_number": 29,
+            "heading": "Imaginary and Complex Numbers",
+            "subheading": "Operations on Complex Numbers",
+            "running_header": None,
+            "text": "Continued body on the next page.",
+        }
+    ]
+    assert final_heading == "Imaginary and Complex Numbers"
+    assert final_subheading == "Operations on Complex Numbers"
+
 def test_split_text_into_paragraphs():
     text = "First paragraph.\n\nSecond paragraph.\n\n\nThird paragraph."
 

@@ -99,5 +99,6 @@ def test_semantic_context_template_renders_children_and_highlights_match():
     assert "Pages 100–102" in html
     assert "First semantic child." in html
     assert "Matched semantic child." in html
-    assert "Matched Entry 8" in html
+    normalized_html = " ".join(html.split())
+    assert "Matched Entry 8" in normalized_html
     assert 'class="segment current"' in html

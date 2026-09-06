@@ -567,6 +567,22 @@ def test_ambiguous_toc_hierarchy_remains_unset_without_page_alignment():
     ) == {}
 
 
+def test_ambiguous_toc_hierarchy_does_not_resolve_to_future_section():
+    lookup = build_toc_hierarchy_lookup(
+        [
+            {"title": "Introduction", "printed_page": 342},
+            {"title": "Introduction", "printed_page": 1128},
+        ]
+    )
+
+    assert resolve_toc_hierarchy(
+        "Introduction",
+        physical_page=203,
+        hierarchy_lookup=lookup,
+        printed_page_offset=12,
+    ) == {}
+
+
 def test_toc_category_ignores_repeated_major_section_header():
     cleaned_text = (
         "--- PAGE 1 ---\n"
@@ -630,3 +646,43 @@ def test_major_section_name_can_complete_multiline_category():
     entries = extract_toc_hierarchy(cleaned_text)
 
     assert entries[-1]["category"] == "METRIC THREADED FASTENERS"
+
+
+def test_build_chunks_separates_section_and_estimated_printed_pages():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "TABLE OF CONTENTS\n"
+        "Each section includes a detailed table of contents\n"
+        "MATHEMATICS 1\n"
+        "\n"
+        "--- PAGE 2 ---\n"
+        "TABLE OF CONTENTS\n"
+        "EXAMPLE CATEGORY\n"
+        "10 Alpha\n"
+        "20 Beta\n"
+        "30 Gamma\n"
+        "\n"
+        "--- PAGE 22 ---\n"
+        "Alpha\n"
+        "Alpha body text.\n"
+        "\n"
+        "--- PAGE 32 ---\n"
+        "Beta\n"
+        "Beta body text.\n"
+        "\n"
+        "--- PAGE 42 ---\n"
+        "Gamma\n"
+        "Gamma body text.\n"
+    )
+
+    chunks = build_chunks("document_123", cleaned_text)
+    alpha = next(
+        chunk for chunk in chunks
+        if chunk["section_heading"] == "Alpha"
+    )
+
+    assert alpha["page_start"] == 22
+    assert alpha["printed_page"] == 10
+    assert alpha["section_printed_page"] == 10
+    assert alpha["estimated_printed_page"] == 10
+    assert alpha["printed_page_offset"] == 12

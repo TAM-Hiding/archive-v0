@@ -25,6 +25,10 @@ def build_structural_index(chunks: list[dict[str, Any]], preview_chars: int = 22
         index_entries.append({
             "entry_index": entry_index,
             "chunk_index": chunk.get("chunk_index"),
+            "semantic_unit_id": chunk.get("semantic_unit_id"),
+            "semantic_unit_index": chunk.get("semantic_unit_index"),
+            "retrieval_chunk_index": chunk.get("retrieval_chunk_index"),
+            "retrieval_chunk_count": chunk.get("retrieval_chunk_count"),
             "page_start": chunk.get("page_start"),
             "page_end": chunk.get("page_end"),
             "section_heading": chunk.get("section_heading") or "",

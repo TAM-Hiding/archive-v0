@@ -848,7 +848,7 @@ def split_oversized_block(
     1. try paragraph boundaries
     2. if that fails badly, use sentence-group fallback
 
-    Keeps page_number and heading attached.
+    Preserves all semantic-unit metadata attached before retrieval splitting.
     """
     text = block["text"]
     if len(text) <= max_chars:
@@ -861,10 +861,7 @@ def split_oversized_block(
         sentence_groups = split_text_into_sentence_groups(text, target_chars=max_chars)
         return [
             {
-                "page_number": block["page_number"],
-                "heading": block["heading"],
-                "running_header": block.get("running_header"),
-                "subheading": block.get("subheading"),
+                **block,
                 "text": group,
             }
             for group in sentence_groups
@@ -888,10 +885,7 @@ def split_oversized_block(
 
             if current_parts and len(candidate) > max_chars:
                 chunks.append({
-                    "page_number": block["page_number"],
-                    "heading": block["heading"],
-                    "running_header": block.get("running_header"),
-                    "subheading": block.get("subheading"),
+                    **block,
                     "text": "\n\n".join(current_parts).strip(),
                 })
                 current_parts = [part]
@@ -900,10 +894,7 @@ def split_oversized_block(
 
     if current_parts:
         chunks.append({
-            "page_number": block["page_number"],
-            "heading": block["heading"],
-            "running_header": block.get("running_header"),
-            "subheading": block.get("subheading"),
+            **block,
             "text": "\n\n".join(current_parts).strip(),
         })
 
@@ -989,8 +980,29 @@ def build_chunks(
     raw_blocks = apply_front_matter_rules(raw_blocks)
 
     sized_blocks: list[dict[str, Any]] = []
-    for block in raw_blocks:
-        sized_blocks.extend(split_oversized_block(block, max_chars=max_chars))
+    for semantic_unit_index, block in enumerate(raw_blocks, start=1):
+        semantic_unit = {
+            **block,
+            "semantic_unit_id": (
+                f"{doc_id}_unit_{semantic_unit_index:04d}"
+            ),
+            "semantic_unit_index": semantic_unit_index,
+        }
+        retrieval_blocks = split_oversized_block(
+            semantic_unit,
+            max_chars=max_chars,
+        )
+        retrieval_chunk_count = len(retrieval_blocks)
+
+        for retrieval_chunk_index, retrieval_block in enumerate(
+            retrieval_blocks,
+            start=1,
+        ):
+            sized_blocks.append({
+                **retrieval_block,
+                "retrieval_chunk_index": retrieval_chunk_index,
+                "retrieval_chunk_count": retrieval_chunk_count,
+            })
 
     chunks: list[dict[str, Any]] = []
 
@@ -1041,6 +1053,10 @@ def build_chunks(
             "chunk_id": f"{doc_id}_chunk_{index:04d}",
             "doc_id": doc_id,
             "chunk_index": index,
+            "semantic_unit_id": block["semantic_unit_id"],
+            "semantic_unit_index": block["semantic_unit_index"],
+            "retrieval_chunk_index": block["retrieval_chunk_index"],
+            "retrieval_chunk_count": block["retrieval_chunk_count"],
             "page_start": block["page_number"],
             "page_end": block["page_number"],
             "section_heading": block["heading"],

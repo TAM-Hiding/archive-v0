@@ -376,6 +376,8 @@ def test_oversized_block_splits_at_paragraph_boundaries():
     block = {
         "page_number": 4,
         "heading": "Discussion",
+        "semantic_unit_id": "doc_unit_0007",
+        "semantic_unit_index": 7,
         "text": (
             "Paragraph one contains useful information.\n\n"
             "Paragraph two contains different information.\n\n"
@@ -388,6 +390,8 @@ def test_oversized_block_splits_at_paragraph_boundaries():
     assert len(result) == 3
     assert all(chunk["page_number"] == 4 for chunk in result)
     assert all(chunk["heading"] == "Discussion" for chunk in result)
+    assert all(chunk["semantic_unit_id"] == "doc_unit_0007" for chunk in result)
+    assert all(chunk["semantic_unit_index"] == 7 for chunk in result)
     assert result[0]["text"].startswith("Paragraph one")
     assert result[1]["text"].startswith("Paragraph two")
     assert result[2]["text"].startswith("Paragraph three")
@@ -426,6 +430,10 @@ def test_build_chunks_creates_expected_metadata():
     assert first_chunk["chunk_id"] == "document_123_chunk_0001"
     assert first_chunk["doc_id"] == "document_123"
     assert first_chunk["chunk_index"] == 1
+    assert first_chunk["semantic_unit_id"] == "document_123_unit_0001"
+    assert first_chunk["semantic_unit_index"] == 1
+    assert first_chunk["retrieval_chunk_index"] == 1
+    assert first_chunk["retrieval_chunk_count"] == 1
     assert first_chunk["page_start"] == 1
     assert first_chunk["page_end"] == 1
     assert first_chunk["section_heading"] == "INTRODUCTION"
@@ -438,6 +446,10 @@ def test_build_chunks_creates_expected_metadata():
 
     assert second_chunk["chunk_id"] == "document_123_chunk_0002"
     assert second_chunk["chunk_index"] == 2
+    assert second_chunk["semantic_unit_id"] == "document_123_unit_0002"
+    assert second_chunk["semantic_unit_index"] == 2
+    assert second_chunk["retrieval_chunk_index"] == 1
+    assert second_chunk["retrieval_chunk_count"] == 1
     assert second_chunk["page_start"] == 2
     assert second_chunk["section_heading"] == "RESULTS"
     assert second_chunk["char_start"] == first_chunk["char_end"]
@@ -503,6 +515,48 @@ def test_oversized_paragraph_inside_multi_paragraph_block_is_split():
 
     assert len(chunks) > 1
     assert all(len(chunk["text"]) <= max_chars for chunk in chunks)
+
+
+def test_retrieval_children_share_semantic_unit_identity():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "DISCUSSION\n"
+        "First sentence has enough text to form a child. "
+        "Second sentence has enough text to form another child. "
+        "Third sentence finishes the semantic unit."
+    )
+
+    result = build_chunks("document_123", cleaned_text, max_chars=65)
+
+    assert len(result) == 3
+    assert {
+        chunk["semantic_unit_id"]
+        for chunk in result
+    } == {"document_123_unit_0001"}
+    assert [chunk["retrieval_chunk_index"] for chunk in result] == [1, 2, 3]
+    assert all(chunk["retrieval_chunk_count"] == 3 for chunk in result)
+
+
+def test_semantic_unit_identity_does_not_depend_on_retrieval_chunk_size():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "DISCUSSION\n"
+        "First sentence belongs to the unit. "
+        "Second sentence belongs to the same unit. "
+        "Third sentence also belongs to the unit."
+    )
+
+    smaller_chunks = build_chunks("document_123", cleaned_text, max_chars=55)
+    larger_chunks = build_chunks("document_123", cleaned_text, max_chars=500)
+
+    assert len(smaller_chunks) > len(larger_chunks)
+    assert {
+        chunk["semantic_unit_id"]
+        for chunk in smaller_chunks
+    } == {
+        chunk["semantic_unit_id"]
+        for chunk in larger_chunks
+    } == {"document_123_unit_0001"}
 
 
 def test_toc_hierarchy_lookup_preserves_duplicate_title_candidates():

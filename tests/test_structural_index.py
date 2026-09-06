@@ -5,6 +5,10 @@ def test_build_structural_index_preserves_hierarchy_metadata():
     chunks = [
         {
             "chunk_index": 7,
+            "semantic_unit_id": "doc_001_unit_0003",
+            "semantic_unit_index": 3,
+            "retrieval_chunk_index": 2,
+            "retrieval_chunk_count": 4,
             "page_start": 28,
             "page_end": 29,
             "section_heading": "Imaginary and Complex Numbers",
@@ -31,6 +35,10 @@ def test_build_structural_index_preserves_hierarchy_metadata():
         {
             "entry_index": 0,
             "chunk_index": 7,
+            "semantic_unit_id": "doc_001_unit_0003",
+            "semantic_unit_index": 3,
+            "retrieval_chunk_index": 2,
+            "retrieval_chunk_count": 4,
             "page_start": 28,
             "page_end": 29,
             "section_heading": "Imaginary and Complex Numbers",

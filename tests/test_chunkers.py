@@ -6,6 +6,7 @@ from ingestion.chunkers import (
     build_toc_hierarchy_lookup,
     extract_toc_hierarchy,
     find_source_text_span,
+    group_blocks_into_semantic_units,
     infer_printed_page_offset,
     is_likely_heading,
     normalize_heading,
@@ -432,6 +433,10 @@ def test_build_chunks_creates_expected_metadata():
     assert first_chunk["chunk_index"] == 1
     assert first_chunk["semantic_unit_id"] == "document_123_unit_0001"
     assert first_chunk["semantic_unit_index"] == 1
+    assert first_chunk["semantic_unit_page_start"] == 1
+    assert first_chunk["semantic_unit_page_end"] == 1
+    assert first_chunk["semantic_unit_char_count"] == len(first_chunk["text"])
+    assert first_chunk["semantic_unit_block_count"] == 1
     assert first_chunk["retrieval_chunk_index"] == 1
     assert first_chunk["retrieval_chunk_count"] == 1
     assert first_chunk["page_start"] == 1
@@ -448,6 +453,10 @@ def test_build_chunks_creates_expected_metadata():
     assert second_chunk["chunk_index"] == 2
     assert second_chunk["semantic_unit_id"] == "document_123_unit_0002"
     assert second_chunk["semantic_unit_index"] == 2
+    assert second_chunk["semantic_unit_page_start"] == 2
+    assert second_chunk["semantic_unit_page_end"] == 2
+    assert second_chunk["semantic_unit_char_count"] == len(second_chunk["text"])
+    assert second_chunk["semantic_unit_block_count"] == 1
     assert second_chunk["retrieval_chunk_index"] == 1
     assert second_chunk["retrieval_chunk_count"] == 1
     assert second_chunk["page_start"] == 2
@@ -557,6 +566,131 @@ def test_semantic_unit_identity_does_not_depend_on_retrieval_chunk_size():
         chunk["semantic_unit_id"]
         for chunk in larger_chunks
     } == {"document_123_unit_0001"}
+
+
+def test_matching_structure_continues_one_semantic_unit_across_pages():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "DISCUSSION\n"
+        "the first page begins the explanation.\n"
+        "--- PAGE 2 ---\n"
+        "the second page continues the explanation.\n"
+        "--- PAGE 3 ---\n"
+        "RESULTS\n"
+        "a new section begins here."
+    )
+
+    result = build_chunks("document_123", cleaned_text)
+    discussion_chunks = result[:2]
+
+    assert len(result) == 3
+    assert {
+        chunk["semantic_unit_id"]
+        for chunk in discussion_chunks
+    } == {"document_123_unit_0001"}
+    assert [
+        chunk["retrieval_chunk_index"]
+        for chunk in discussion_chunks
+    ] == [1, 2]
+    assert all(
+        chunk["retrieval_chunk_count"] == 2
+        for chunk in discussion_chunks
+    )
+    assert all(
+        chunk["semantic_unit_page_start"] == 1
+        for chunk in discussion_chunks
+    )
+    assert all(
+        chunk["semantic_unit_page_end"] == 2
+        for chunk in discussion_chunks
+    )
+    assert all(
+        chunk["semantic_unit_char_count"]
+        == sum(len(child["text"]) for child in discussion_chunks)
+        for chunk in discussion_chunks
+    )
+    assert all(
+        chunk["semantic_unit_block_count"] == 2
+        for chunk in discussion_chunks
+    )
+    assert all(
+        cleaned_text[
+            chunk["source_char_start"]:chunk["source_char_end"]
+        ] == chunk["text"]
+        for chunk in discussion_chunks
+    )
+    assert result[2]["semantic_unit_id"] == "document_123_unit_0002"
+
+
+def test_semantic_units_do_not_cross_duplicate_section_provenance():
+    blocks = [
+        {
+            "page_number": 10,
+            "heading": "Introduction",
+            "subheading": None,
+            "major_section": "FIRST MAJOR",
+            "category": "FIRST CATEGORY",
+            "section_printed_page": 10,
+            "text": "first introduction",
+        },
+        {
+            "page_number": 11,
+            "heading": "Introduction",
+            "subheading": None,
+            "major_section": "SECOND MAJOR",
+            "category": "SECOND CATEGORY",
+            "section_printed_page": 11,
+            "text": "second introduction",
+        },
+    ]
+
+    units = group_blocks_into_semantic_units(blocks)
+
+    assert len(units) == 2
+
+
+def test_unlabelled_blocks_remain_separate_semantic_units():
+    blocks = [
+        {
+            "page_number": 1,
+            "heading": None,
+            "subheading": None,
+            "text": "first front-matter block",
+        },
+        {
+            "page_number": 2,
+            "heading": None,
+            "subheading": None,
+            "text": "second front-matter block",
+        },
+    ]
+
+    units = group_blocks_into_semantic_units(blocks)
+
+    assert len(units) == 2
+
+
+def test_bare_heuristic_headings_do_not_continue_across_pages():
+    blocks = [
+        {
+            "page_number": 20,
+            "heading": "SIZE",
+            "subheading": None,
+            "section_printed_page": None,
+            "text": "first table page",
+        },
+        {
+            "page_number": 21,
+            "heading": "SIZE",
+            "subheading": None,
+            "section_printed_page": None,
+            "text": "second table page",
+        },
+    ]
+
+    units = group_blocks_into_semantic_units(blocks)
+
+    assert len(units) == 2
 
 
 def test_toc_hierarchy_lookup_preserves_duplicate_title_candidates():

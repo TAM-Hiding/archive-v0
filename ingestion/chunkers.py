@@ -927,6 +927,73 @@ def apply_front_matter_rules(blocks: list[dict[str, Any]]) -> list[dict[str, Any
     return adjusted
 
 
+def semantic_unit_grouping_key(block: dict[str, Any]) -> tuple[Any, ...] | None:
+    """
+    Return the structural identity used for conservative unit continuation.
+
+    Unlabelled blocks and bare heuristic headings intentionally receive no
+    grouping key. Cross-page continuation requires authoritative TOC
+    provenance, a known generic heading, or an explicit subheading, preventing
+    table labels and damaged running headers from creating accidental
+    multi-page units.
+    """
+    heading = normalize_heading(block.get("heading") or "")
+    subheading = normalize_heading(block.get("subheading") or "")
+
+    has_toc_provenance = block.get("section_printed_page") is not None
+    has_known_heading = heading in KNOWN_HEADINGS
+
+    if not subheading and not has_toc_provenance and not has_known_heading:
+        return None
+
+    return (
+        block.get("major_section"),
+        block.get("category"),
+        block.get("section_printed_page"),
+        heading,
+        subheading,
+    )
+
+
+def group_blocks_into_semantic_units(
+    blocks: list[dict[str, Any]],
+) -> list[list[dict[str, Any]]]:
+    """
+    Group consecutive, structurally identical blocks across contiguous pages.
+
+    Physical page blocks remain intact inside each unit. This lets retrieval
+    children retain exact, page-local source spans while their semantic parent
+    can cover a naturally variable page range.
+    """
+    units: list[list[dict[str, Any]]] = []
+
+    for block in blocks:
+        key = semantic_unit_grouping_key(block)
+        page_number = block.get("page_number")
+
+        if units:
+            previous_block = units[-1][-1]
+            previous_key = semantic_unit_grouping_key(previous_block)
+            previous_page = previous_block.get("page_number")
+            pages_are_contiguous = (
+                isinstance(page_number, int)
+                and isinstance(previous_page, int)
+                and previous_page <= page_number <= previous_page + 1
+            )
+
+            if (
+                key is not None
+                and key == previous_key
+                and pages_are_contiguous
+            ):
+                units[-1].append(block)
+                continue
+
+        units.append([block])
+
+    return units
+
+
 def build_chunks(
     doc_id: str,
     cleaned_text: str,
@@ -979,20 +1046,54 @@ def build_chunks(
 
     raw_blocks = apply_front_matter_rules(raw_blocks)
 
-    sized_blocks: list[dict[str, Any]] = []
-    for semantic_unit_index, block in enumerate(raw_blocks, start=1):
-        semantic_unit = {
-            **block,
-            "semantic_unit_id": (
-                f"{doc_id}_unit_{semantic_unit_index:04d}"
-            ),
-            "semantic_unit_index": semantic_unit_index,
-        }
-        retrieval_blocks = split_oversized_block(
-            semantic_unit,
-            max_chars=max_chars,
+    structured_blocks: list[dict[str, Any]] = []
+    for block in raw_blocks:
+        hierarchy = resolve_toc_hierarchy(
+            block["heading"],
+            block["page_number"],
+            toc_hierarchy_lookup,
+            printed_page_offset,
         )
+        section_printed_page = hierarchy.get("printed_page")
+        estimated_printed_page = (
+            block["page_number"] - printed_page_offset
+            if printed_page_offset is not None
+            else None
+        )
+        structured_blocks.append({
+            **block,
+            "major_section": hierarchy.get("major_section"),
+            "category": hierarchy.get("category"),
+            "printed_page": section_printed_page,
+            "section_printed_page": section_printed_page,
+            "estimated_printed_page": estimated_printed_page,
+            "printed_page_offset": printed_page_offset,
+        })
+
+    semantic_units = group_blocks_into_semantic_units(structured_blocks)
+
+    sized_blocks: list[dict[str, Any]] = []
+    for semantic_unit_index, unit_blocks in enumerate(semantic_units, start=1):
+        semantic_unit_id = f"{doc_id}_unit_{semantic_unit_index:04d}"
+        semantic_unit_page_start = unit_blocks[0]["page_number"]
+        semantic_unit_page_end = unit_blocks[-1]["page_number"]
+        retrieval_blocks: list[dict[str, Any]] = []
+
+        for block in unit_blocks:
+            retrieval_blocks.extend(split_oversized_block(
+                {
+                    **block,
+                    "semantic_unit_id": semantic_unit_id,
+                    "semantic_unit_index": semantic_unit_index,
+                },
+                max_chars=max_chars,
+            ))
+
         retrieval_chunk_count = len(retrieval_blocks)
+        semantic_unit_char_count = sum(
+            len(retrieval_block["text"])
+            for retrieval_block in retrieval_blocks
+        )
 
         for retrieval_chunk_index, retrieval_block in enumerate(
             retrieval_blocks,
@@ -1002,6 +1103,10 @@ def build_chunks(
                 **retrieval_block,
                 "retrieval_chunk_index": retrieval_chunk_index,
                 "retrieval_chunk_count": retrieval_chunk_count,
+                "semantic_unit_page_start": semantic_unit_page_start,
+                "semantic_unit_page_end": semantic_unit_page_end,
+                "semantic_unit_char_count": semantic_unit_char_count,
+                "semantic_unit_block_count": len(unit_blocks),
             })
 
     chunks: list[dict[str, Any]] = []
@@ -1019,18 +1124,6 @@ def build_chunks(
         char_start = current_offset
         char_end = current_offset + len(block_text)
 
-        hierarchy = resolve_toc_hierarchy(
-            block["heading"],
-            block["page_number"],
-            toc_hierarchy_lookup,
-            printed_page_offset,
-        )
-        section_printed_page = hierarchy.get("printed_page")
-        estimated_printed_page = (
-            block["page_number"] - printed_page_offset
-            if printed_page_offset is not None
-            else None
-        )
         source_char_start: int | None = None
         source_char_end: int | None = None
         source_page = pages_by_number.get(block["page_number"])
@@ -1055,20 +1148,24 @@ def build_chunks(
             "chunk_index": index,
             "semantic_unit_id": block["semantic_unit_id"],
             "semantic_unit_index": block["semantic_unit_index"],
+            "semantic_unit_page_start": block["semantic_unit_page_start"],
+            "semantic_unit_page_end": block["semantic_unit_page_end"],
+            "semantic_unit_char_count": block["semantic_unit_char_count"],
+            "semantic_unit_block_count": block["semantic_unit_block_count"],
             "retrieval_chunk_index": block["retrieval_chunk_index"],
             "retrieval_chunk_count": block["retrieval_chunk_count"],
             "page_start": block["page_number"],
             "page_end": block["page_number"],
             "section_heading": block["heading"],
             "subheading": block.get("subheading"),
-            "major_section": hierarchy.get("major_section"),
-            "category": hierarchy.get("category"),
+            "major_section": block.get("major_section"),
+            "category": block.get("category"),
             # Compatibility alias for pre-provenance-separation consumers.
             # This is the section's TOC start page, not the chunk's page.
-            "printed_page": section_printed_page,
-            "section_printed_page": section_printed_page,
-            "estimated_printed_page": estimated_printed_page,
-            "printed_page_offset": printed_page_offset,
+            "printed_page": block.get("section_printed_page"),
+            "section_printed_page": block.get("section_printed_page"),
+            "estimated_printed_page": block.get("estimated_printed_page"),
+            "printed_page_offset": block.get("printed_page_offset"),
             "running_header": block.get("running_header"),
             "text": block_text,
             "char_count": len(block_text),

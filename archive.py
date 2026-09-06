@@ -271,6 +271,18 @@ def search_structural_entries(query):
                     "chunk_index": entry.get("chunk_index"),
                     "semantic_unit_id": entry.get("semantic_unit_id"),
                     "semantic_unit_index": entry.get("semantic_unit_index"),
+                    "semantic_unit_page_start": entry.get(
+                        "semantic_unit_page_start"
+                    ),
+                    "semantic_unit_page_end": entry.get(
+                        "semantic_unit_page_end"
+                    ),
+                    "semantic_unit_char_count": entry.get(
+                        "semantic_unit_char_count"
+                    ),
+                    "semantic_unit_block_count": entry.get(
+                        "semantic_unit_block_count"
+                    ),
                     "retrieval_chunk_index": entry.get("retrieval_chunk_index"),
                     "retrieval_chunk_count": entry.get("retrieval_chunk_count"),
                     "page_start": entry.get("page_start"),

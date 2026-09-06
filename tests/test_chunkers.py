@@ -14,10 +14,12 @@ from ingestion.chunkers import (
     parse_cleaned_text_into_pages,
     resolve_toc_hierarchy,
     save_chunks,
+    split_block_at_table_captions,
     split_oversized_block,
     split_page_into_blocks,
     strip_repeated_page_furniture,
     split_text_into_paragraphs,
+    split_text_into_line_groups,
     split_text_into_sentence_groups,
     toc_heading_candidates_for_page,
 )
@@ -375,6 +377,50 @@ def test_split_text_into_sentence_groups():
     ]
 
 
+def test_table_caption_separates_preceding_prose_from_table():
+    block = {
+        "page_number": 42,
+        "heading": "Advantages of Woodruff Keys",
+        "text": (
+            "Woodruff keys are inexpensive to manufacture.\n"
+            "Table 6. Keyway Dimensions for Metric Woodruff Keys\n"
+            "Key Size Width Depth\n"
+            "4 × 7.5 × 19 4 6.0"
+        ),
+    }
+
+    result = split_block_at_table_captions(block)
+
+    assert len(result) == 2
+    assert result[0]["content_type"] == "prose"
+    assert result[0]["text"] == (
+        "Woodruff keys are inexpensive to manufacture."
+    )
+    assert result[1]["content_type"] == "table"
+    assert result[1]["table_caption"] == (
+        "Table 6. Keyway Dimensions for Metric Woodruff Keys"
+    )
+    assert result[1]["text"].endswith("4 × 7.5 × 19 4 6.0")
+
+
+def test_table_text_splits_only_at_extracted_line_boundaries():
+    text = (
+        "Table 6. Dimensions\n"
+        "Header A Header B\n"
+        "First complete extracted row\n"
+        "Second complete extracted row"
+    )
+
+    result = split_text_into_line_groups(text, target_chars=50)
+
+    assert result == [
+        "Table 6. Dimensions\nHeader A Header B",
+        "First complete extracted row",
+        "Second complete extracted row",
+    ]
+    assert "".join(result).replace("\n", "") == text.replace("\n", "")
+
+
 def test_oversized_block_splits_at_paragraph_boundaries():
     block = {
         "page_number": 4,
@@ -597,6 +643,53 @@ def test_build_chunks_filters_furniture_without_losing_source_spans():
     assert all("Copyright" not in chunk["text"] for chunk in result)
     assert all("industrialpress.com" not in chunk["text"] for chunk in result)
     assert all("Handbook 30th" not in chunk["text"] for chunk in result)
+    assert all(
+        cleaned_text[
+            chunk["source_char_start"]:chunk["source_char_end"]
+        ] == chunk["text"]
+        for chunk in result
+    )
+
+
+def test_build_chunks_creates_separate_searchable_table_unit():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "DISCUSSION\n"
+        "Woodruff keys are inexpensive to manufacture.\n"
+        "Table 6. Keyway Dimensions for Metric Woodruff Keys\n"
+        "Key Size Width Depth Radius Tolerance\n"
+        "1.5 × 2.6 × 7 1.5 2.0 0.8\n"
+        "4 × 7.5 × 19 4 6.0 1.8\n"
+        "10 × 13 × 32 10 10.0 3.3"
+    )
+
+    result = build_chunks("document_123", cleaned_text, max_chars=90)
+    prose_chunks = [
+        chunk
+        for chunk in result
+        if chunk["content_type"] == "prose"
+    ]
+    table_chunks = [
+        chunk
+        for chunk in result
+        if chunk["content_type"] == "table"
+    ]
+
+    assert len(prose_chunks) == 1
+    assert len(table_chunks) > 1
+    assert (
+        prose_chunks[0]["semantic_unit_id"]
+        != table_chunks[0]["semantic_unit_id"]
+    )
+    assert {
+        chunk["semantic_unit_id"]
+        for chunk in table_chunks
+    } == {table_chunks[0]["semantic_unit_id"]}
+    assert all(
+        chunk["table_caption"]
+        == "Table 6. Keyway Dimensions for Metric Woodruff Keys"
+        for chunk in table_chunks
+    )
     assert all(
         cleaned_text[
             chunk["source_char_start"]:chunk["source_char_end"]

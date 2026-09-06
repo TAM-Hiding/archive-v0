@@ -16,6 +16,13 @@ PAGE_MARKER_SCAN_PATTERN = re.compile(
 
 TOC_NUMBERED_ENTRY_PATTERN = re.compile(r"^\s*(\d{1,4})\s+(.+?)\s*$")
 
+TABLE_CAPTION_PATTERN = re.compile(
+    r"^\s*Table\s+"
+    r"(?:\d+(?:[.-]\d+)*[A-Za-z]?|[IVXLCDM]+)"
+    r"(?:[.:])?(?:\s+.*)?$",
+    re.IGNORECASE,
+)
+
 RUNNING_HEADER_PATTERNS = [
     re.compile(r"^\d+\s+[A-Z][A-Z0-9\s,&/\-]+$"),
     re.compile(r"^[A-Z][A-Z0-9\s,&/\-]+\s+\d+$"),
@@ -918,6 +925,85 @@ def split_text_into_paragraphs(text: str) -> list[str]:
     return paragraphs
 
 
+def split_block_at_table_captions(
+    block: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Separate prose and caption-led tables into distinct source blocks."""
+    lines = block["text"].splitlines()
+    caption_indexes = [
+        index
+        for index, line in enumerate(lines)
+        if TABLE_CAPTION_PATTERN.fullmatch(line.strip())
+    ]
+
+    if not caption_indexes:
+        return [{
+            **block,
+            "content_type": block.get("content_type", "prose"),
+            "table_caption": block.get("table_caption"),
+        }]
+
+    separated: list[dict[str, Any]] = []
+    first_caption_index = caption_indexes[0]
+    prose_text = "\n".join(lines[:first_caption_index]).strip()
+
+    if prose_text:
+        separated.append({
+            **block,
+            "content_type": "prose",
+            "table_caption": None,
+            "text": prose_text,
+        })
+
+    for caption_position, caption_index in enumerate(caption_indexes):
+        next_caption_index = (
+            caption_indexes[caption_position + 1]
+            if caption_position + 1 < len(caption_indexes)
+            else len(lines)
+        )
+        table_text = "\n".join(
+            lines[caption_index:next_caption_index]
+        ).strip()
+
+        if table_text:
+            separated.append({
+                **block,
+                "content_type": "table",
+                "table_caption": lines[caption_index].strip(),
+                "text": table_text,
+            })
+
+    return separated
+
+
+def split_text_into_line_groups(
+    text: str,
+    target_chars: int = 1200,
+) -> list[str]:
+    """Split layout-sensitive text at extracted line boundaries."""
+    lines = [line.rstrip() for line in text.splitlines()]
+    groups: list[str] = []
+    current_lines: list[str] = []
+
+    for line in lines:
+        candidate = "\n".join(current_lines + [line]).strip()
+
+        if current_lines and len(candidate) > target_chars:
+            group = "\n".join(current_lines).strip()
+            if group:
+                groups.append(group)
+            current_lines = [line]
+        else:
+            current_lines.append(line)
+
+    if current_lines:
+        group = "\n".join(current_lines).strip()
+        if group:
+            groups.append(group)
+
+    return groups
+
+
 def split_text_into_sentence_groups(text: str, target_chars: int = 900) -> list[str]:
     """
     Fallback splitter when paragraph structure is weak.
@@ -969,6 +1055,18 @@ def split_oversized_block(
     text = block["text"]
     if len(text) <= max_chars:
         return [block]
+
+    if block.get("content_type") == "table":
+        return [
+            {
+                **block,
+                "text": group,
+            }
+            for group in split_text_into_line_groups(
+                text,
+                target_chars=max_chars,
+            )
+        ]
 
     paragraphs = split_text_into_paragraphs(text)
 
@@ -1049,17 +1147,23 @@ def semantic_unit_grouping_key(block: dict[str, Any]) -> tuple[Any, ...] | None:
 
     Unlabelled blocks and bare heuristic headings intentionally receive no
     grouping key. Cross-page continuation requires authoritative TOC
-    provenance, a known generic heading, or an explicit subheading, preventing
-    table labels and damaged running headers from creating accidental
-    multi-page units.
+    provenance, a known generic heading, an explicit subheading, or an
+    authoritative table caption, preventing bare table labels and damaged
+    running headers from creating accidental multi-page units.
     """
     heading = normalize_heading(block.get("heading") or "")
     subheading = normalize_heading(block.get("subheading") or "")
 
     has_toc_provenance = block.get("section_printed_page") is not None
     has_known_heading = heading in KNOWN_HEADINGS
+    has_table_caption = bool(block.get("table_caption"))
 
-    if not subheading and not has_toc_provenance and not has_known_heading:
+    if (
+        not subheading
+        and not has_toc_provenance
+        and not has_known_heading
+        and not has_table_caption
+    ):
         return None
 
     return (
@@ -1068,6 +1172,8 @@ def semantic_unit_grouping_key(block: dict[str, Any]) -> tuple[Any, ...] | None:
         block.get("section_printed_page"),
         heading,
         subheading,
+        block.get("content_type", "prose"),
+        normalize_heading(block.get("table_caption") or ""),
     )
 
 
@@ -1165,6 +1271,12 @@ def build_chunks(
         raw_blocks.extend(page_blocks)
 
     raw_blocks = apply_front_matter_rules(raw_blocks)
+    table_aware_blocks: list[dict[str, Any]] = []
+
+    for block in raw_blocks:
+        table_aware_blocks.extend(split_block_at_table_captions(block))
+
+    raw_blocks = table_aware_blocks
 
     structured_blocks: list[dict[str, Any]] = []
     for block in raw_blocks:
@@ -1278,6 +1390,8 @@ def build_chunks(
             "page_end": block["page_number"],
             "section_heading": block["heading"],
             "subheading": block.get("subheading"),
+            "content_type": block.get("content_type", "prose"),
+            "table_caption": block.get("table_caption"),
             "major_section": block.get("major_section"),
             "category": block.get("category"),
             # Compatibility alias for pre-provenance-separation consumers.

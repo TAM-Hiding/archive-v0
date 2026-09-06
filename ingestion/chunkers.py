@@ -396,6 +396,36 @@ def infer_printed_page_offset(
     return offset
 
 
+def toc_heading_candidates_for_page(
+    toc_entries: list[dict[str, Any]],
+    physical_page: int,
+    printed_page_offset: int | None,
+    max_start_lag: int = 2,
+) -> set[str]:
+    """Return TOC headings eligible to begin near one physical page.
+
+    A global TOC title set lets ordinary table labels promote sections
+    thousands of pages early. Require source-position agreement instead.
+    """
+    if printed_page_offset is None:
+        return set()
+
+    estimated_printed_page = physical_page - printed_page_offset
+    candidates: set[str] = set()
+
+    for entry in toc_entries:
+        title = entry.get("title")
+        section_start = entry.get("printed_page")
+
+        if not title or section_start is None:
+            continue
+
+        if section_start <= estimated_printed_page <= section_start + max_start_lag:
+            candidates.add(normalize_heading(title))
+
+    return candidates
+
+
 def resolve_toc_hierarchy(
     heading: str | None,
     physical_page: int,
@@ -404,9 +434,6 @@ def resolve_toc_hierarchy(
 ) -> dict[str, Any]:
     """Resolve one hierarchy record without silently discarding duplicates."""
     candidates = hierarchy_lookup.get(normalize_heading(heading or ""), [])
-
-    if len(candidates) == 1:
-        return candidates[0]
 
     if not candidates or printed_page_offset is None:
         return {}
@@ -901,12 +928,6 @@ def build_chunks(
     
     toc_entries = extract_toc_hierarchy(cleaned_text)
 
-    toc_heading_candidates = {
-        normalize_heading(entry["title"])
-        for entry in toc_entries
-        if entry.get("title")
-    }
-
     toc_heading_lookup = {
         normalize_heading(entry["title"]): entry["title"]
         for entry in toc_entries
@@ -928,6 +949,11 @@ def build_chunks(
     current_subheading: str | None = None
 
     for page in pages:
+        toc_heading_candidates = toc_heading_candidates_for_page(
+            toc_entries,
+            page["page_number"],
+            printed_page_offset,
+        )
         page_blocks, current_heading, current_subheading = split_page_into_blocks(
             page["page_number"],
             page["text"],

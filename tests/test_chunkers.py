@@ -14,6 +14,7 @@ from ingestion.chunkers import (
     split_page_into_blocks,
     split_text_into_paragraphs,
     split_text_into_sentence_groups,
+    toc_heading_candidates_for_page,
 )
 
 
@@ -581,6 +582,72 @@ def test_ambiguous_toc_hierarchy_does_not_resolve_to_future_section():
         hierarchy_lookup=lookup,
         printed_page_offset=12,
     ) == {}
+
+
+def test_unique_toc_hierarchy_does_not_resolve_to_future_section():
+    lookup = build_toc_hierarchy_lookup(
+        [{"title": "Pressure", "printed_page": 2669}]
+    )
+
+    assert resolve_toc_hierarchy(
+        "Pressure",
+        physical_page=298,
+        hierarchy_lookup=lookup,
+        printed_page_offset=12,
+    ) == {}
+
+
+def test_toc_heading_candidates_are_limited_to_nearby_section_starts():
+    entries = [
+        {"title": "Current Section", "printed_page": 100},
+        {"title": "Two-page Lag", "printed_page": 98},
+        {"title": "Pressure", "printed_page": 2669},
+    ]
+
+    assert toc_heading_candidates_for_page(
+        entries,
+        physical_page=112,
+        printed_page_offset=12,
+    ) == {"current section", "two-page lag"}
+
+
+def test_far_future_toc_title_does_not_promote_table_label():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "TABLE OF CONTENTS\n"
+        "Each section includes a detailed table of contents\n"
+        "MATHEMATICS 1\n"
+        "\n"
+        "--- PAGE 2 ---\n"
+        "TABLE OF CONTENTS\n"
+        "EXAMPLE CATEGORY\n"
+        "10 Alpha\n"
+        "20 Beta\n"
+        "30 Gamma\n"
+        "1000 Pressure\n"
+        "\n"
+        "--- PAGE 22 ---\n"
+        "Alpha\n"
+        "Alpha body.\n"
+        "\n"
+        "--- PAGE 32 ---\n"
+        "Beta\n"
+        "Beta body.\n"
+        "\n"
+        "--- PAGE 42 ---\n"
+        "Gamma\n"
+        "Gamma body.\n"
+        "\n"
+        "--- PAGE 50 ---\n"
+        "Pressure\n"
+        "Allowed, psi\n"
+    )
+
+    chunks = build_chunks("document_123", cleaned_text)
+    page_50 = [chunk for chunk in chunks if chunk["page_start"] == 50]
+
+    assert all(chunk["section_heading"] != "Pressure" for chunk in page_50)
+    assert any("Pressure" in chunk["text"] for chunk in page_50)
 
 
 def test_toc_category_ignores_repeated_major_section_header():

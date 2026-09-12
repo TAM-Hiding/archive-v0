@@ -95,19 +95,20 @@
             margin-left: 0.85rem;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 
 <div class="container">
-    <h1>Source Document</h1>
+    <h1>Source Overview</h1>
     <div class="doc-subtitle">{{ document.title }}</div>
 
     <div class="button-row">
-        <a href="/" class="button-link">Back to Search</a>
+        {% include "partials/back_menu.html" %}
 
         {% if document.mode == "structural_only" %}
-            <a href="/curator/document/{{ document.source_doc_id }}" class="button-link">Document Details</a>
-            <a href="/curator/document/{{ document.source_doc_id }}/structure" class="button-link">Open Structure View</a>
+            <a href="/curator/document/{{ document.source_doc_id }}" class="button-secondary">Document</a>
+            <a href="/curator/document/{{ document.source_doc_id }}/structure" class="button-link">Browse Sections</a>
         {% endif %}
     </div>
 
@@ -129,7 +130,7 @@
     Structural entries: {{ document.chunk_count_estimate }}
     Source file: {{ document.source_filename }}
 
-    Use Structure View to browse the document and open transient reconstructed segments.
+    Use Browse Sections to navigate the document and open reconstructed context.
             </div>
         </div>
     {% else %}

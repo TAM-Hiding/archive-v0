@@ -155,13 +155,13 @@
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
-<body>
+<body class="search-page">
 
-<div class="container">
+<div class="container search-shell{% if not results and not query %} search-shell-idle{% endif %}">
 
 <h1>The Archive™</h1>
 
-<form method="post">
+<form method="post" class="search-form">
     <input name="query" value="{{ query }}" placeholder="Search...">
 
     <select name="scope">
@@ -170,13 +170,15 @@
         <option value="reference" {% if scope == "reference" %}selected{% endif %}>Reference</option>
     </select>
 
-    <button type="submit" name="action" value="search">Search</button>
-    <button type="submit" name="action" value="reload">Reload</button>
+    <span class="search-actions">
+        <button type="submit" name="action" value="search" class="button-primary">Search</button>
+        <button type="submit" name="action" value="reload" class="button-secondary">Reload</button>
+    </span>
 </form>
 
 <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
-    <a href="/add" class="button-link">Add Note</a>
-    <a href="/curator" class="button-link">Curator</a>
+    <a href="/add" class="button-secondary">Add Note</a>
+    <a href="/curator" class="button-secondary">Curator</a>
 </div>
 {% if message %}
     <p style="color: #7bdff2; font-weight: bold;">{{ message }}</p>

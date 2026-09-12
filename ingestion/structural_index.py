@@ -50,6 +50,7 @@ def build_structural_index(chunks: list[dict[str, Any]], preview_chars: int = 22
             "estimated_printed_page": chunk.get("estimated_printed_page"),
             "printed_page_offset": chunk.get("printed_page_offset"),
             "running_header": chunk.get("running_header") or "",
+            "layout_hint": chunk.get("layout_hint") or "",
             "char_count": chunk.get("char_count", len(text)),
             "char_start": chunk.get("char_start"),
             "char_end": chunk.get("char_end"),

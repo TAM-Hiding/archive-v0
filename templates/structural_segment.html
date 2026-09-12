@@ -15,6 +15,7 @@
         .segment.current .segment-label { color: #ffd166; }
         .segment-meta { color: #aaa; font-size: 0.95rem; margin-bottom: 0.7rem; }
         .preview { white-space: pre-wrap; line-height: 1.5; color: #ddd; }
+        .equation-preview { font-family: "DejaVu Sans Mono", Consolas, monospace; overflow-x: auto; margin: 0; }
         .unit-meta { background: #252525; border-left: 4px solid #7bdff2; padding: 0.8rem 1rem; margin-bottom: 1.2rem; color: #ccc; }
         .table-layout { background: #252525; border: 1px solid #4b6570; border-radius: 8px; padding: 1rem; margin-bottom: 1.2rem; }
         .table-scroll { overflow-x: auto; margin-top: 0.8rem; }
@@ -112,7 +113,11 @@
                 {{ item.entry.section_heading }}
                 {% endif %}
             </div>
+            {% if item.entry.layout_hint == "equation" %}
+            <pre class="preview equation-preview">{{ item.body }}</pre>
+            {% else %}
             <div class="preview">{{ item.body }}</div>
+            {% endif %}
         </div>
         {% endfor %}
         {% if segment.table_layout %}</details>{% endif %}
@@ -129,7 +134,11 @@
                 {{ item.entry.section_heading }}
                 {% endif %}
             </div>
+            {% if item.entry.layout_hint == "equation" %}
+            <pre class="preview equation-preview">{{ item.body }}</pre>
+            {% else %}
             <div class="preview">{{ item.body }}</div>
+            {% endif %}
         </div>
         {% endif %}
         {% endfor %}

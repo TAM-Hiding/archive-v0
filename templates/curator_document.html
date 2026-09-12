@@ -129,7 +129,6 @@
         <a href="/curator/document/{{ document.doc_id }}/structure" class="button-link">Browse Sections</a>
         {% endif %}
 
-        <a href="/curator/document/{{ document.doc_id }}/reindex" class="button-secondary">Refresh Search Index</a>
     </div>
 
     <h1>{{ document.title }}</h1>
@@ -231,9 +230,12 @@
     <div class="panel">
         <div class="panel-title">Maintenance</div>
         <div class="read-only-note">
-            <strong>Refresh Search Index</strong> rebuilds searchable generated notes from the
-            current document data. It does not reread or modify the original PDF.
+            Use <strong>Refresh Search Index</strong> only when this document's search content
+            is missing or out of date. It rebuilds searchable generated notes from the current
+            document data; it does not reread or modify the original PDF.
         </div>
+        <a href="/curator/document/{{ document.doc_id }}/reindex"
+           class="button-secondary" style="margin-top: 0.9rem;">Refresh Search Index</a>
         {% if document.has_generated_output %}
         <a href="/curator/document/{{ document.doc_id }}/delete-generated"
            class="button-secondary" style="margin-top: 0.9rem;">Remove Generated Notes</a>

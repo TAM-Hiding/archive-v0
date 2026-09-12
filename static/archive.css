@@ -1,0 +1,217 @@
+:root {
+    --archive-orange: #fd6f2f;
+    --archive-bone: #ffead1;
+    --archive-sage: #dce4b8;
+    --archive-olive: #515739;
+    --archive-olive-dark: #282c1e;
+    --archive-ink: #211f1a;
+    --archive-muted: #b9bca9;
+    --archive-panel: #323628;
+    --archive-panel-soft: #3d4230;
+    --archive-border: #62694a;
+    --archive-danger: #df5a37;
+    --archive-radius: 10px;
+}
+
+body {
+    background: var(--archive-olive-dark);
+    color: var(--archive-bone);
+}
+
+h1, h2, h3,
+.title, .note-title, .doc-title, .card-title, .panel-title {
+    color: var(--archive-orange);
+}
+
+.subtitle, .doc-subtitle, .read-only-note, .empty-state {
+    color: var(--archive-muted);
+}
+
+.panel, .card, .note-card, .doc-card, .result {
+    background: var(--archive-panel);
+    border-color: var(--archive-border);
+    border-radius: var(--archive-radius);
+}
+
+.meta-panel, .path-block, details.technical-details {
+    background: var(--archive-panel-soft);
+    border-color: var(--archive-border);
+}
+
+.meta-label, .path-label, .actions a, .doc-actions a {
+    color: var(--archive-sage);
+}
+
+a {
+    color: var(--archive-sage);
+}
+
+.button-link,
+.button-secondary,
+.button-primary,
+.back-menu > summary {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.55rem;
+    padding: 0.62rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font: inherit;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.button-link,
+.button-primary {
+    background: var(--archive-orange);
+    color: var(--archive-ink);
+}
+
+.button-secondary,
+.back-menu > summary {
+    background: var(--archive-sage);
+    color: var(--archive-ink);
+}
+
+.button-link:hover,
+.button-primary:hover,
+.button-secondary:hover,
+.back-menu > summary:hover {
+    filter: brightness(1.06);
+}
+
+.button-link:focus-visible,
+.button-primary:focus-visible,
+.button-secondary:focus-visible,
+.back-menu > summary:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 3px solid var(--archive-bone);
+    outline-offset: 2px;
+}
+
+.back-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.back-menu > summary {
+    list-style: none;
+}
+
+.back-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.back-menu > summary::after {
+    content: "▾";
+    margin-left: 0.55rem;
+    font-size: 0.8em;
+}
+
+.back-menu[open] > summary::after {
+    content: "▴";
+}
+
+.back-menu-list {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    min-width: 13rem;
+    padding: 0.4rem;
+    background: var(--archive-panel-soft);
+    border: 1px solid var(--archive-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+}
+
+.back-menu-list a {
+    display: block;
+    padding: 0.62rem 0.7rem;
+    border-radius: 5px;
+    color: var(--archive-bone);
+    text-decoration: none;
+}
+
+.back-menu-list a:hover,
+.back-menu-list a:focus-visible {
+    background: var(--archive-olive);
+}
+
+.summary-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin: 1rem 0;
+}
+
+.summary-chip,
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border: 1px solid var(--archive-border);
+    border-radius: 999px;
+    background: var(--archive-panel-soft);
+    color: var(--archive-bone);
+    font-size: 0.92rem;
+}
+
+details.technical-details {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--archive-border);
+    border-radius: var(--archive-radius);
+}
+
+details.technical-details > summary {
+    color: var(--archive-sage);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+details.technical-details[open] > summary {
+    margin-bottom: 0.85rem;
+}
+
+.note-preview {
+    margin: 0.7rem 0;
+    color: var(--archive-bone);
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.action-help {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--archive-muted);
+    font-size: 0.88rem;
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+@media (max-width: 700px) {
+    body {
+        padding: 1rem;
+    }
+
+    .button-row {
+        gap: 0.55rem;
+    }
+
+    .back-menu-list {
+        position: fixed;
+        top: auto;
+        right: 1rem;
+        bottom: 1rem;
+        left: 1rem;
+    }
+}

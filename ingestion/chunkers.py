@@ -251,6 +251,110 @@ def split_global_contents_page_into_blocks(
 
     return blocks
 
+
+def split_detailed_contents_page_into_blocks(
+    page_number: int,
+    page_text: str,
+    major_section_titles: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Group a detailed TOC page into coherent category units."""
+    if major_section_titles is None:
+        major_section_titles = set()
+
+    blocks: list[dict[str, Any]] = []
+    preamble_lines: list[str] = []
+    pending_category_parts: list[str] = []
+    current_category: str | None = None
+    current_lines: list[str] = []
+    running_header = "TABLE OF CONTENTS"
+
+    def flush_category() -> None:
+        nonlocal current_category, current_lines
+        if current_category is not None and current_lines:
+            blocks.append({
+                "page_number": page_number,
+                "heading": "Table of Contents",
+                "subheading": current_category,
+                "running_header": running_header,
+                "content_type": "contents",
+                "text": "\n".join(current_lines),
+            })
+        current_category = None
+        current_lines = []
+
+    for line in page_text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        normalized = normalize_heading(stripped)
+        if normalized == "table of contents":
+            continue
+
+        if normalized in {"continued", "(continued)"}:
+            continue
+
+        if stripped.isdigit():
+            continue
+
+        if normalized in major_section_titles:
+            running_header = stripped
+            continue
+
+        numbered_entry = TOC_NUMBERED_ENTRY_PATTERN.fullmatch(stripped)
+        if numbered_entry is not None:
+            if pending_category_parts:
+                flush_category()
+                current_category = " ".join(pending_category_parts)
+                current_lines = [current_category]
+                pending_category_parts = []
+
+            if current_category is None:
+                preamble_lines.append(stripped)
+            else:
+                current_lines.append(stripped)
+            continue
+
+        letters = [char for char in stripped if char.isalpha()]
+        is_category_part = (
+            bool(letters)
+            and len(stripped) <= 100
+            and stripped.upper() == stripped
+        )
+
+        if is_category_part:
+            if current_lines:
+                flush_category()
+            pending_category_parts.append(stripped)
+            continue
+
+        if current_category is None:
+            preamble_lines.append(stripped)
+        else:
+            current_lines.append(stripped)
+
+    if pending_category_parts and current_category is None:
+        current_category = " ".join(pending_category_parts)
+        current_lines = [current_category]
+
+    flush_category()
+
+    if blocks and preamble_lines:
+        blocks[0]["text"] = "\n".join(
+            preamble_lines + [blocks[0]["text"]]
+        )
+    elif preamble_lines:
+        blocks.append({
+            "page_number": page_number,
+            "heading": "Table of Contents",
+            "subheading": None,
+            "running_header": running_header,
+            "content_type": "contents",
+            "text": "\n".join(preamble_lines),
+        })
+
+    return blocks
+
 def extract_toc_heading_candidates(cleaned_text: str) -> set[str]:
     """
     Extract normalized semantic heading candidates from numbered TOC entries.
@@ -1452,6 +1556,11 @@ def build_chunks(
     }
 
     major_sections = extract_major_toc_sections(cleaned_text)
+    major_section_titles = {
+        normalize_heading(section["title"])
+        for section in major_sections
+        if section.get("title")
+    }
 
     toc_entries = attach_major_sections_to_toc_entries(
         toc_entries,
@@ -1478,6 +1587,17 @@ def build_chunks(
             ))
             # The catalog is self-contained navigation, not a body heading
             # whose state should leak into the following page.
+            current_heading = None
+            current_subheading = None
+            continue
+
+
+        if looks_like_toc_page(page_text):
+            raw_blocks.extend(split_detailed_contents_page_into_blocks(
+                page["page_number"],
+                page_text,
+                major_section_titles=major_section_titles,
+            ))
             current_heading = None
             current_subheading = None
             continue

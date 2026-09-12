@@ -1,6 +1,59 @@
 from pypdf import PdfWriter
 
-from ingestion.extractors import extract_text_from_pdf, save_extracted_text
+from ingestion.extractors import (
+    _extract_pdfplumber_page_text,
+    extract_text_from_pdf,
+    save_extracted_text,
+)
+
+
+class RecordingPdfPlumberPage:
+    def __init__(self, geometric_text, flow_text):
+        self.geometric_text = geometric_text
+        self.flow_text = flow_text
+        self.calls = []
+
+    def extract_text(self, **kwargs):
+        self.calls.append(kwargs)
+        if kwargs["use_text_flow"]:
+            return self.flow_text
+        return self.geometric_text
+
+
+def test_pdfplumber_uses_text_flow_for_explicit_toc_page():
+    page = RecordingPdfPlumberPage(
+        geometric_text=(
+            "TABLE OF CONTENTS\n"
+            "NUMBERS, FRACTIONS, AND GEOMETRY\n"
+            "DECIMALS\n"
+            "3 Inch Conversion 39 Arithmetic Sequences"
+        ),
+        flow_text=(
+            "TABLE OF CONTENTS\n"
+            "NUMBERS, FRACTIONS, AND\n"
+            "DECIMALS\n"
+            "3 Inch Conversion\n"
+            "GEOMETRY\n"
+            "39 Arithmetic Sequences"
+        ),
+    )
+
+    result = _extract_pdfplumber_page_text(page)
+
+    assert result == page.flow_text
+    assert [call["use_text_flow"] for call in page.calls] == [False, True]
+
+
+def test_pdfplumber_keeps_geometric_order_for_body_page():
+    page = RecordingPdfPlumberPage(
+        geometric_text="Body prose\n270 × 44\nx = --------",
+        flow_text="unused flow text",
+    )
+
+    result = _extract_pdfplumber_page_text(page)
+
+    assert result == page.geometric_text
+    assert [call["use_text_flow"] for call in page.calls] == [False]
 
 
 def test_extract_text_from_pdf(tmp_path):

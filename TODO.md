@@ -8,15 +8,9 @@
 - Fix table and figure previews in the scrolling structure/chunk list. Use
   artifact-aware summaries or thumbnails instead of clipped or misleading
   flattened content.
-- Reconsider the visual placement of `Entry N`. Treat it as secondary locator
-  metadata (for example, at the end or right edge of the entry header) rather
-  than the first thing a reader sees.
 
 ## Document Recovery
 
-- Repair front-matter contents/catalog chunking so inline uppercase references,
-  wrapped bullet lists, and roman-numeral page markers are not misclassified as
-  tiny ordinary sections.
 - Validate figure extraction across varied diagrams, photographs, charts, and
   multi-panel captions before running a whole-document figure scan.
 - Improve geometric reconstruction of stacked fractions and other display

@@ -62,6 +62,7 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "estimated_printed_page": 16,
             "printed_page_offset": 12,
             "running_header": "FACTORIAL 17",
+            "layout_hint": "",
             "char_count": 34,
             "char_start": 120,
             "char_end": 154,

@@ -33,13 +33,14 @@
         .figure-labels { margin-top: 0.8rem; color: #aaa; }
         .figure-labels summary { cursor: pointer; color: #7bdff2; font-size: 0.92rem; }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 <div class="container">
     <div class="button-row">
-        <a href="/" class="button-link">Back to Search</a>
-        <a href="/curator/document/{{ segment.document.doc_id }}" class="button-link">Back to Document</a>
-        <a href="/curator/document/{{ segment.document.doc_id }}/structure" class="button-link">Back to Structure View</a>
+        {% include "partials/back_menu.html" %}
+        <a href="/curator/document/{{ segment.document.doc_id }}" class="button-secondary">Document</a>
+        <a href="/curator/document/{{ segment.document.doc_id }}/structure" class="button-secondary">All Sections</a>
     </div>
 
     <h1>{% if segment.context_mode == "semantic_unit" %}Semantic Context{% else %}Structural Segment{% endif %}</h1>

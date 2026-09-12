@@ -113,46 +113,51 @@
             line-height: 1.45;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 
 <div class="container">
     <div class="button-row">
-        <a href="/" class="button-link">Back to Search</a>
-        <a href="/curator" class="button-link">Back to Curator</a>
-        <a href="/curator/documents" class="button-link">Back to Documents</a>
-        <a href="/curator/document/{{ document.doc_id }}/reindex" class="button-link">Re-index Generated</a>
+        {% include "partials/back_menu.html" %}
 
         {% if document.has_generated_output %}
-        <a href="/curator/document/{{ document.doc_id }}/source" class="button-link">Open Generated Source View</a>
-        <a href="/curator/document/{{ document.doc_id }}/delete-generated" class="button-link">Delete Generated Output</a>
+        <a href="/curator/document/{{ document.doc_id }}/source" class="button-link">Read Extracted Text</a>
         {% endif %}
 
         {% if document.chunk_storage_mode == "structural_only" %}
-        <a href="/curator/document/{{ document.doc_id }}/structure" class="button-link">Open Structure View</a>
+        <a href="/curator/document/{{ document.doc_id }}/structure" class="button-link">Browse Sections</a>
         {% endif %}
+
+        <a href="/curator/document/{{ document.doc_id }}/reindex" class="button-secondary">Refresh Search Index</a>
     </div>
 
     <h1>{{ document.title }}</h1>
     <div class="subtitle">{{ document.source_filename }}</div>
 
+    <div class="summary-strip" aria-label="Document summary">
+        <span class="summary-chip"><strong>Status</strong> {{ document.status }}</span>
+        <span class="summary-chip"><strong>Pages</strong> {{ document.page_count }}</span>
+        <span class="summary-chip"><strong>Entries</strong> {{ document.structural_index_entry_count }}</span>
+        <span class="summary-chip"><strong>Category</strong> {{ document.category_path }}</span>
+    </div>
+
     <div class="panel">
-        <div class="panel-title">Document Metadata</div>
+        <div class="panel-title">About this document</div>
+
+        <div class="read-only-note">
+            This source is preserved as read-only reference material. Browse its sections or
+            extracted text without changing the archived original.
+        </div>
+    </div>
+
+    <details class="technical-details">
+        <summary>Technical details</summary>
 
         <div class="meta-grid">
             <div class="meta-item">
                 <span class="meta-label">Doc ID:</span>
                 {{ document.doc_id }}
-            </div>
-
-            <div class="meta-item">
-                <span class="meta-label">Category:</span>
-                {{ document.category_path }}
-            </div>
-
-            <div class="meta-item">
-                <span class="meta-label">Status:</span>
-                <span class="status-pill">{{ document.status }}</span>
             </div>
 
             <div class="meta-item">
@@ -200,10 +205,7 @@
                 {{ document.promoted_chunk_count }}
             </div>
         </div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-title">Paths</div>
+        <div class="panel-title" style="margin-top: 1rem;">Storage paths</div>
 
         <div class="path-block">
             <div class="path-label">Metadata File</div>
@@ -224,15 +226,18 @@
             <div class="path-label">Structural Index File</div>
             <div class="path-value">{{ document.structural_index_file }}</div>
         </div>
-    </div>
+    </details>
 
     <div class="panel">
-        <div class="panel-title">Reference Safeguards</div>
+        <div class="panel-title">Maintenance</div>
         <div class="read-only-note">
-            Ingested reference material is treated as read-only in curator v1.
-            Generated chunks are managed through the parent document rather than edited individually.
-            Structural navigation, promotion, and full source-view tools will expand here next.
+            <strong>Refresh Search Index</strong> rebuilds searchable generated notes from the
+            current document data. It does not reread or modify the original PDF.
         </div>
+        {% if document.has_generated_output %}
+        <a href="/curator/document/{{ document.doc_id }}/delete-generated"
+           class="button-secondary" style="margin-top: 0.9rem;">Remove Generated Notes</a>
+        {% endif %}
     </div>
 </div>
 

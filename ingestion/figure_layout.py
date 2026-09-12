@@ -136,11 +136,13 @@ def extract_page_figure_layouts(
             round(min(page_x1, max(graphic_x1, caption_x1, word_x1) + 10), 3),
             round(min(page_bottom, caption_bottom + 5), 3),
         ]
-        crop_text = page.crop(tuple(crop_bbox)).extract_text(
-            x_tolerance=2,
-            y_tolerance=2,
-            use_text_flow=False,
-        ) or ""
+        label_lines = [
+            line["text"].strip()
+            for line in positioned_lines
+            if float(line["top"]) >= graphic_top - 2
+            and float(line["bottom"]) <= caption_bottom + 1
+            and line["text"].strip()
+        ]
         layout_id = f"page_{page_number:04d}_figure_{figure_index:02d}"
         layouts.append({
             "layout_id": layout_id,
@@ -149,7 +151,7 @@ def extract_page_figure_layouts(
             "caption": caption_line["text"].strip(),
             "caption_key": normalize_figure_caption(caption_line["text"]),
             "bbox": crop_bbox,
-            "label_text": crop_text.strip(),
+            "label_text": "\n".join(label_lines),
             "vector_object_count": sum(
                 1 for item in candidates
                 if item.get("object_type") in {"line", "rect", "curve"}

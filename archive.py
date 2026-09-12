@@ -800,6 +800,41 @@ def get_figure_layouts_for_entries(document, entries):
     ]
 
 
+def figure_label_text(layout):
+    """Return only figure labels through the caption, excluding later prose."""
+    label_text = layout.get("label_text", "").strip()
+    caption = layout.get("caption", "").strip()
+    if not label_text or not caption:
+        return label_text
+    caption_start = label_text.find(caption)
+    if caption_start < 0:
+        return label_text
+    return label_text[:caption_start + len(caption)].strip()
+
+
+def remove_figure_labels_from_body(body, layouts):
+    """Hide duplicated diagram labels while preserving the untouched source."""
+    display_body = body
+    removed_labels = []
+    for layout in layouts:
+        label_text = figure_label_text(layout)
+        tokens = re.findall(r"\S+", label_text)
+        if not tokens:
+            continue
+        pattern = r"\s+".join(re.escape(token) for token in tokens)
+        display_body, replacements = re.subn(
+            pattern,
+            "",
+            display_body,
+            count=1,
+            flags=re.DOTALL,
+        )
+        if replacements:
+            removed_labels.append(label_text)
+    display_body = re.sub(r"\n(?:[ \t]*\n){2,}", "\n\n", display_body)
+    return display_body.strip(), removed_labels
+
+
 def get_figure_image_path(doc_id, layout_id):
     """Resolve a manifest-listed figure image without accepting raw paths."""
     if not doc_id or os.path.basename(doc_id) != doc_id:
@@ -959,6 +994,28 @@ def get_structural_segment(doc_id, entry_index):
         document,
         entries[context_start:context_end + 1],
     )
+    figure_layouts_by_id = {
+        layout.get("layout_id"): layout for layout in figure_layouts
+    }
+    displayed_items = (
+        context_entries
+        if context_mode == "semantic_unit"
+        else [build_entry(entry_index - 1), current, build_entry(entry_index + 1)]
+    )
+    for item in displayed_items:
+        if item is None:
+            continue
+        linked_layouts = [
+            figure_layouts_by_id[layout_id]
+            for layout_id in item["entry"].get("figure_layout_ids", [])
+            if layout_id in figure_layouts_by_id
+        ]
+        display_body, removed_labels = remove_figure_labels_from_body(
+            item["body"],
+            linked_layouts,
+        )
+        item["display_body"] = display_body
+        item["figure_labels"] = removed_labels
 
     return {
         "document": document,
@@ -969,9 +1026,17 @@ def get_structural_segment(doc_id, entry_index):
         "table_layout": table_layout,
         "table_layouts": table_layouts,
         "figure_layouts": figure_layouts,
-        "previous": build_entry(entry_index - 1),
+        "previous": (
+            displayed_items[0]
+            if context_mode != "semantic_unit"
+            else build_entry(entry_index - 1)
+        ),
         "current": current,
-        "next": build_entry(entry_index + 1)
+        "next": (
+            displayed_items[2]
+            if context_mode != "semantic_unit"
+            else build_entry(entry_index + 1)
+        ),
     }
 
 def reindex_ingested_document(doc_id):

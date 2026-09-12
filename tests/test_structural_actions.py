@@ -163,7 +163,9 @@ def test_semantic_context_template_renders_recovered_figure():
                 "page_end": 754,
                 "char_count": 100,
             },
-            "body": "Micrometer discussion.",
+            "body": "Anvil Spindle Fig. 1. Micrometer Micrometer discussion.",
+            "display_body": "Micrometer discussion.",
+            "figure_labels": ["Anvil\nSpindle\nFig. 1. Micrometer"],
         }],
         "figure_layouts": [{
             "layout_id": "page_0754_figure_01",
@@ -185,6 +187,8 @@ def test_semantic_context_template_renders_recovered_figure():
     assert "Fig. 1. Design features of a micrometer" in html
     assert "/curator/document/doc_001/figure/page_0754_figure_01" in html
     assert "95 vector objects" in html
+    assert "Extracted figure labels" in html
+    assert "Micrometer discussion." in html
 
 
 def test_semantic_context_template_identifies_table_unit():

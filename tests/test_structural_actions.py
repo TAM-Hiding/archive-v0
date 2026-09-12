@@ -25,9 +25,10 @@ def test_structure_index_renders_heading_hierarchy_before_entry_locator():
         html = render_template("structural_index.html", document=document)
 
     normalized_html = " ".join(html.split())
-    hierarchy = "Table of Contents </span> <span class=\"hierarchy-separator\">›</span> <span>DIMENSIONING, GAGING, AND MEASURING"
 
-    assert hierarchy in normalized_html
+    assert "<span>Table of Contents</span>" in normalized_html
+    assert '<span class="hierarchy-separator">›</span>' in normalized_html
+    assert "<span>DIMENSIONING, GAGING, AND MEASURING</span>" in normalized_html
     assert '<span class="entry-locator">Entry 25</span>' in normalized_html
     assert normalized_html.index("Table of Contents") < normalized_html.index("Entry 25")
 

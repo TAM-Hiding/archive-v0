@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import string
+import re
 import difflib
 import hashlib
 from ingestion.indexer import (
@@ -603,36 +604,17 @@ def get_structural_index_for_document(doc_id):
     }
 
 
-def get_table_layout_for_entry(document, entry):
-    """Load only the table-layout shard linked to one structural entry."""
-    layout_id = entry.get("table_layout_id")
-    layout_file = document.get("table_layout_file", "")
-    if not layout_id or not layout_file or not os.path.isfile(layout_file):
-        return None
-
-    try:
-        with open(layout_file, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return None
-
-    if manifest.get("storage_mode") != "sharded":
-        for layout in manifest.get("layouts", []):
-            if layout.get("layout_id") == layout_id:
-                return layout
-        return None
-
-    layout_record = next(
-        (
-            layout
-            for layout in manifest.get("layouts", [])
-            if layout.get("layout_id") == layout_id
-        ),
-        None,
+def normalize_table_series_caption(caption):
+    """Normalize a caption while ignoring PDF continuation markers."""
+    without_continued = re.sub(
+        r"\(?\bcontinued\b\)?",
+        " ",
+        caption.casefold(),
     )
-    if layout_record is None:
-        return None
+    return " ".join(re.findall(r"[a-z0-9]+", without_continued))
 
+
+def _load_table_layout_shard(layout_file, layout_record):
     manifest_root = os.path.realpath(os.path.dirname(layout_file))
     shard_path = os.path.realpath(
         os.path.join(manifest_root, layout_record.get("file", ""))
@@ -648,6 +630,129 @@ def get_table_layout_for_entry(document, entry):
             return json.load(f)
     except (OSError, json.JSONDecodeError):
         return None
+
+
+def get_table_layouts_for_entry(document, entry):
+    """Load the contiguous logical table series linked to one entry."""
+    layout_id = entry.get("table_layout_id")
+    layout_file = document.get("table_layout_file", "")
+    if not layout_id or not layout_file or not os.path.isfile(layout_file):
+        return []
+
+    try:
+        with open(layout_file, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    if manifest.get("storage_mode") != "sharded":
+        layouts = manifest.get("layouts", [])
+        target = next(
+            (layout for layout in layouts if layout.get("layout_id") == layout_id),
+            None,
+        )
+        if target is None:
+            return []
+        target_identity = normalize_table_series_caption(
+            target.get("caption", "")
+        )
+        if not target_identity:
+            return [target]
+        matching = sorted(
+            (
+                layout
+                for layout in layouts
+                if normalize_table_series_caption(layout.get("caption", ""))
+                == target_identity
+            ),
+            key=lambda layout: (
+                layout.get("page_number", 0),
+                layout.get("table_index", 0),
+            ),
+        )
+        return _contiguous_table_series(matching, layout_id)
+
+    layout_records = manifest.get("layouts", [])
+    target_record = next(
+        (
+            layout
+            for layout in layout_records
+            if layout.get("layout_id") == layout_id
+        ),
+        None,
+    )
+    if target_record is None:
+        return []
+
+    target_identity = normalize_table_series_caption(
+        target_record.get("caption", "")
+    )
+    if not target_identity:
+        layout = _load_table_layout_shard(layout_file, target_record)
+        return [layout] if layout is not None else []
+    matching_records = sorted(
+        (
+            record
+            for record in layout_records
+            if normalize_table_series_caption(record.get("caption", ""))
+            == target_identity
+        ),
+        key=lambda record: (
+            record.get("page_number", 0),
+            record.get("table_index", 0),
+        ),
+    )
+    series_records = _contiguous_table_series(matching_records, layout_id)
+    return [
+        layout
+        for layout in (
+            _load_table_layout_shard(layout_file, record)
+            for record in series_records
+        )
+        if layout is not None
+    ]
+
+
+def _contiguous_table_series(layouts, target_layout_id):
+    """Return the same-caption component connected by adjacent PDF pages."""
+    target_index = next(
+        (
+            index
+            for index, layout in enumerate(layouts)
+            if layout.get("layout_id") == target_layout_id
+        ),
+        None,
+    )
+    if target_index is None:
+        return []
+
+    start = target_index
+    end = target_index
+    while start > 0:
+        current_page = layouts[start].get("page_number", 0)
+        previous_page = layouts[start - 1].get("page_number", 0)
+        if current_page - previous_page > 1:
+            break
+        start -= 1
+
+    while end + 1 < len(layouts):
+        current_page = layouts[end].get("page_number", 0)
+        next_page = layouts[end + 1].get("page_number", 0)
+        if next_page - current_page > 1:
+            break
+        end += 1
+
+    return layouts[start:end + 1]
+
+
+def get_table_layout_for_entry(document, entry):
+    """Compatibility helper returning the exact linked table layout."""
+    layout_id = entry.get("table_layout_id")
+    layouts = get_table_layouts_for_entry(document, entry)
+    return next(
+        (layout for layout in layouts if layout.get("layout_id") == layout_id),
+        None,
+    )
 
 
 def get_structural_segment(doc_id, entry_index):
@@ -699,7 +804,15 @@ def get_structural_segment(doc_id, entry_index):
 
     current = build_entry(entry_index)
     current_entry = entries[entry_index]
-    table_layout = get_table_layout_for_entry(document, current_entry)
+    table_layouts = get_table_layouts_for_entry(document, current_entry)
+    table_layout = next(
+        (
+            layout
+            for layout in table_layouts
+            if layout.get("layout_id") == current_entry.get("table_layout_id")
+        ),
+        None,
+    )
     semantic_unit_id = current_entry.get("semantic_unit_id")
     context_entries = []
     context_mode = "legacy_neighbors"
@@ -765,6 +878,7 @@ def get_structural_segment(doc_id, entry_index):
         "matched_entry_index": entry_index,
         "semantic_unit": semantic_unit,
         "table_layout": table_layout,
+        "table_layouts": table_layouts,
         "previous": build_entry(entry_index - 1),
         "current": current,
         "next": build_entry(entry_index + 1)

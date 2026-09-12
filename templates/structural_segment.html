@@ -38,18 +38,26 @@
     <h1>{% if segment.context_mode == "semantic_unit" %}Semantic Context{% else %}Structural Segment{% endif %}</h1>
     <div class="subtitle">{{ segment.document.title }}</div>
 
-    {% if segment.table_layout %}
+    {% if segment.table_layouts %}
+        {% if segment.table_layouts|length > 1 %}
+        <div class="unit-meta">
+            <strong>Continued table series</strong> —
+            {{ segment.table_layouts|length }} PDF pages |
+            Pages {{ segment.table_layouts[0].page_number }}–{{ segment.table_layouts[-1].page_number }}
+        </div>
+        {% endif %}
+        {% for table_layout in segment.table_layouts %}
         <div class="table-layout">
-            <strong>{{ segment.table_layout.caption or "Recovered PDF table" }}</strong>
+            <strong>{{ table_layout.caption or "Recovered PDF table" }}</strong>
             <div class="segment-meta">
-                Page {{ segment.table_layout.page_number }} |
-                {{ segment.table_layout.row_count }} detected rows |
-                {{ segment.table_layout.column_count }} detected columns |
-                {{ segment.table_layout.cells|length }} geometric cells
+                Page {{ table_layout.page_number }} |
+                {{ table_layout.row_count }} detected rows |
+                {{ table_layout.column_count }} detected columns |
+                {{ table_layout.cells|length }} geometric cells
             </div>
             <div class="table-scroll">
                 <table class="table-grid">
-                    {% for row in segment.table_layout.grid %}
+                    {% for row in table_layout.grid %}
                     <tr>
                         {% for cell in row %}<td>{{ cell or "" }}</td>{% endfor %}
                     </tr>
@@ -58,9 +66,10 @@
             </div>
             <details class="table-fallback">
                 <summary>Coordinate-derived reading order</summary>
-                <div class="preview">{{ segment.table_layout.reading_order_text }}</div>
+                <div class="preview">{{ table_layout.reading_order_text }}</div>
             </details>
         </div>
+        {% endfor %}
     {% endif %}
 
     {% if segment.context_mode == "semantic_unit" %}

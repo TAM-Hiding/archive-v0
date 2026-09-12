@@ -1,3 +1,5 @@
+import json
+
 import archive
 
 
@@ -25,6 +27,66 @@ def test_table_layout_loader_reads_only_linked_shard(tmp_path):
     )
 
     assert result["grid"] == [["Fit", "Use"]]
+
+
+def test_table_layout_loader_stitches_contiguous_continuation_pages(tmp_path):
+    shard_directory = tmp_path / "table_layouts"
+    shard_directory.mkdir()
+    records = [
+        (
+            "page_0658_table_01",
+            658,
+            "Table 4. Preferred Shaft Basis Metric Clearance Fits",
+            "First-page data",
+        ),
+        (
+            "page_0659_table_01",
+            659,
+            "Table 4. (Continued) Preferred Shaft Basis Metric Clearance Fits",
+            "Continued data",
+        ),
+        (
+            "page_0900_table_01",
+            900,
+            "Table 4. Preferred Shaft Basis Metric Clearance Fits",
+            "Unrelated distant data",
+        ),
+    ]
+    manifest_records = []
+    for layout_id, page_number, caption, value in records:
+        shard_path = shard_directory / f"{layout_id}.json"
+        shard_path.write_text(
+            (
+                '{"layout_id":"%s","page_number":%d,'
+                '"caption":"%s","grid":[["%s"]]}'
+            ) % (layout_id, page_number, caption, value),
+            encoding="utf-8",
+        )
+        manifest_records.append({
+            "layout_id": layout_id,
+            "page_number": page_number,
+            "table_index": 1,
+            "caption": caption,
+            "file": f"table_layouts/{layout_id}.json",
+        })
+
+    manifest_path = tmp_path / "table_layout.json"
+    manifest_path.write_text(
+        json.dumps({
+            "storage_mode": "sharded",
+            "layouts": manifest_records,
+        }),
+        encoding="utf-8",
+    )
+
+    result = archive.get_table_layouts_for_entry(
+        {"table_layout_file": str(manifest_path)},
+        {"table_layout_id": "page_0659_table_01"},
+    )
+
+    assert [layout["page_number"] for layout in result] == [658, 659]
+    assert result[0]["grid"] == [["First-page data"]]
+    assert result[1]["grid"] == [["Continued data"]]
 
 
 def test_structural_segment_uses_verified_source_span(tmp_path, monkeypatch):

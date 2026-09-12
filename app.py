@@ -235,17 +235,19 @@ def curator_document_reindex(doc_id):
 
         return render_template(
             "curator_action_result.html",
-            title="Re-index Generated Output",
+            title="Search Index Refreshed",
             result=result,
-            document=updated_document
+            document=updated_document,
+            primary_return_url=url_for("curator_document", doc_id=doc_id),
+            primary_return_label="Back to Document",
         )
 
     return render_template(
         "curator_confirm_action.html",
-        title="Re-index Generated Output",
+        title="Refresh Search Index",
         action_description="Rebuild generated notes from the current metadata and chunk data for this document.",
         warning_text="This will replace the current generated output for this document, but it will not modify the archived source file or metadata record.",
-        confirm_button_text="Re-index Generated Output",
+        confirm_button_text="Refresh Search Index",
         cancel_url=url_for("curator_document", doc_id=doc_id),
         form_action_url=url_for("curator_document_reindex", doc_id=doc_id),
         document=document
@@ -264,17 +266,19 @@ def curator_document_delete_generated(doc_id):
 
         return render_template(
             "curator_action_result.html",
-            title="Delete Generated Output",
+            title="Generated Notes Removed",
             result=result,
-            document=updated_document
+            document=updated_document,
+            primary_return_url=url_for("curator_document", doc_id=doc_id),
+            primary_return_label="Back to Document",
         )
 
     return render_template(
         "curator_confirm_action.html",
-        title="Delete Generated Output",
-        action_description="Delete the generated notes/output directory for this document.",
+        title="Remove Generated Notes",
+        action_description="Remove the searchable notes generated for this document.",
         warning_text="This only removes generated output. It does not delete the archived source PDF, metadata, extracted text, cleaned text, or chunk data.",
-        confirm_button_text="Delete Generated Output",
+        confirm_button_text="Remove Generated Notes",
         cancel_url=url_for("curator_document", doc_id=doc_id),
         form_action_url=url_for("curator_document_delete_generated", doc_id=doc_id),
         document=document
@@ -412,7 +416,9 @@ def curator_delete_note(note_id):
             "curator_action_result.html",
             title="Delete Note",
             result=result,
-            document=None
+            document=None,
+            primary_return_url=url_for("curator_notes"),
+            primary_return_label="Back to Notes",
         )
 
     return render_template(

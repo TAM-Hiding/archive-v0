@@ -16,6 +16,14 @@ PAGE_MARKER_SCAN_PATTERN = re.compile(
 
 TOC_NUMBERED_ENTRY_PATTERN = re.compile(r"^\s*(\d{1,4})\s+(.+?)\s*$")
 
+GLOBAL_CONTENTS_SECTION_PATTERN = re.compile(
+    r"^([A-Z][A-Z0-9\s,&/\-]+?)\s+(\d{1,4}|[IVXLCDMivxlcdm]+)$"
+)
+GLOBAL_CONTENTS_REVERSED_SECTION_PATTERN = re.compile(
+    r"^(\d{1,4})([A-Z][A-Z0-9\s,&/\-]+)$"
+)
+ROMAN_FRONT_MATTER_PAGE_PATTERN = re.compile(r"^[ivxlcdm]{1,8}$")
+
 TABLE_CAPTION_PATTERN = re.compile(
     r"^\s*Table\s+"
     r"(?:\d+(?:[.-]\d+)*[A-Za-z]?|[IVXLCDM]+)"
@@ -81,6 +89,167 @@ def looks_like_toc_page(page_text: str) -> bool:
         normalize_heading(line) == "table of contents"
         for line in lines[:5]
     )
+
+
+def looks_like_global_contents_page(page_text: str) -> bool:
+    """Return whether a front-matter page catalogs the book's major sections."""
+    normalized = normalize_heading(page_text)
+    instruction = "each section includes a detailed table of contents or index"
+
+    if instruction not in normalized:
+        return False
+
+    return any(
+        GLOBAL_CONTENTS_SECTION_PATTERN.fullmatch(line.strip())
+        for line in page_text.splitlines()
+    )
+
+
+def looks_like_roman_front_matter_page(page_text: str) -> bool:
+    """Detect a roman-numbered front-matter page near its leading edge."""
+    leading_lines = [
+        line.strip()
+        for line in page_text.splitlines()
+        if line.strip()
+    ][:3]
+
+    return any(
+        ROMAN_FRONT_MATTER_PAGE_PATTERN.fullmatch(line)
+        for line in leading_lines
+    )
+
+
+def strip_roman_front_matter_page_label(page_text: str) -> str:
+    """Remove one leading roman page label without touching body numerals."""
+    lines = page_text.splitlines()
+    nonblank_seen = 0
+
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        nonblank_seen += 1
+        if ROMAN_FRONT_MATTER_PAGE_PATTERN.fullmatch(stripped):
+            lines[index] = ""
+            break
+
+        if nonblank_seen >= 3:
+            break
+
+    return "\n".join(lines)
+
+
+def split_global_contents_page_into_blocks(
+    page_number: int,
+    page_text: str,
+) -> list[dict[str, Any]]:
+    """Split the global contents catalog at major-section boundaries.
+
+    Wrapped bullet lists belong to the preceding major section. Keeping them
+    together prevents ordinary all-caps heading heuristics and running-header
+    detection from shredding the catalog into tiny, misleading entries.
+    """
+    page_label: str | None = None
+    preamble_lines: list[str] = []
+    sections: list[tuple[str, list[str]]] = []
+    current_title: str | None = None
+    current_lines: list[str] = []
+
+    def flush_section() -> None:
+        nonlocal current_title, current_lines
+        if current_title is not None and current_lines:
+            sections.append((current_title, current_lines))
+        current_title = None
+        current_lines = []
+
+    for line in page_text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        normalized = normalize_heading(stripped)
+        if normalized == "table of contents":
+            continue
+
+        if ROMAN_FRONT_MATTER_PAGE_PATTERN.fullmatch(stripped):
+            page_label = stripped
+            continue
+
+        if normalized.startswith(
+            "each section includes a detailed table of contents or index"
+        ):
+            preamble_lines.append(stripped)
+            continue
+
+        section_match = GLOBAL_CONTENTS_SECTION_PATTERN.fullmatch(stripped)
+        reversed_match = GLOBAL_CONTENTS_REVERSED_SECTION_PATTERN.fullmatch(
+            stripped
+        )
+
+        if section_match is not None:
+            section_title = section_match.group(1).strip()
+            page_reference = section_match.group(2)
+
+            # License, preface, and acknowledgments are one compact front-
+            # matter group rather than several nearly empty catalog entries.
+            if ROMAN_FRONT_MATTER_PAGE_PATTERN.fullmatch(page_reference.lower()):
+                if current_title != "Front Matter":
+                    flush_section()
+                    current_title = "Front Matter"
+                current_lines.append(stripped)
+            else:
+                flush_section()
+                current_title = section_title
+                current_lines = [stripped]
+            continue
+
+        if reversed_match is not None:
+            flush_section()
+            current_title = reversed_match.group(2).strip()
+            current_lines = [stripped]
+            continue
+
+        if current_title is None:
+            preamble_lines.append(stripped)
+        else:
+            current_lines.append(stripped)
+
+    flush_section()
+
+    running_header = "TABLE OF CONTENTS"
+    if page_label:
+        running_header = f"{running_header} {page_label}"
+
+    if sections and preamble_lines:
+        title, lines = sections[0]
+        sections[0] = (title, preamble_lines + lines)
+        preamble_lines = []
+
+    blocks = [
+        {
+            "page_number": page_number,
+            "heading": "Table of Contents",
+            "subheading": title,
+            "running_header": running_header,
+            "content_type": "contents",
+            "text": "\n".join(lines),
+        }
+        for title, lines in sections
+        if lines
+    ]
+
+    if preamble_lines:
+        blocks.insert(0, {
+            "page_number": page_number,
+            "heading": "Table of Contents",
+            "subheading": None,
+            "running_header": running_header,
+            "content_type": "contents",
+            "text": "\n".join(preamble_lines),
+        })
+
+    return blocks
 
 def extract_toc_heading_candidates(cleaned_text: str) -> set[str]:
     """
@@ -643,6 +812,7 @@ def find_source_text_span(
 
 KNOWN_HEADINGS = {
     "abstract",
+    "acknowledgments",
     "introduction",
     "background",
     "methods",
@@ -654,6 +824,8 @@ KNOWN_HEADINGS = {
     "references",
     "bibliography",
     "appendix",
+    "preface",
+    "table of contents",
 }
 
 
@@ -819,6 +991,7 @@ def split_page_into_blocks(
     inherited_subheading: str | None = None,
     toc_heading_candidates: set[str] | None = None,
     toc_heading_lookup: dict[str, str] | None = None,
+    allow_heuristic_headings: bool = True,
 ) -> tuple[list[dict[str, Any]], str | None, str | None]:
     """
     Split a page into heading-aware blocks.
@@ -908,7 +1081,13 @@ def split_page_into_blocks(
                 current_body_lines.append(abstract_body)
             continue
 
-        if is_likely_heading(stripped):
+        if (
+            is_likely_heading(stripped)
+            and (
+                allow_heuristic_headings
+                or normalize_heading(stripped) in KNOWN_HEADINGS
+            )
+        ):
             flush_block()
             current_heading = stripped
             current_subheading = None
@@ -1287,6 +1466,26 @@ def build_chunks(
     current_subheading: str | None = None
 
     for page in pages:
+        page_text = strip_repeated_page_furniture(
+            page["text"],
+            page_furniture,
+        )
+
+        if looks_like_global_contents_page(page_text):
+            raw_blocks.extend(split_global_contents_page_into_blocks(
+                page["page_number"],
+                page_text,
+            ))
+            # The catalog is self-contained navigation, not a body heading
+            # whose state should leak into the following page.
+            current_heading = None
+            current_subheading = None
+            continue
+
+        is_roman_front_matter = looks_like_roman_front_matter_page(page_text)
+        if is_roman_front_matter:
+            page_text = strip_roman_front_matter_page_label(page_text)
+
         toc_heading_candidates = toc_heading_candidates_for_page(
             toc_entries,
             page["page_number"],
@@ -1294,14 +1493,12 @@ def build_chunks(
         )
         page_blocks, current_heading, current_subheading = split_page_into_blocks(
             page["page_number"],
-            strip_repeated_page_furniture(
-                page["text"],
-                page_furniture,
-            ),
+            page_text,
             inherited_heading=current_heading,
             inherited_subheading=current_subheading,
             toc_heading_candidates=toc_heading_candidates,
             toc_heading_lookup=toc_heading_lookup,
+            allow_heuristic_headings=not is_roman_front_matter,
         )
         raw_blocks.extend(page_blocks)
 

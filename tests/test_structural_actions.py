@@ -3,6 +3,35 @@ from flask import render_template
 from app import app
 
 
+def test_structure_index_renders_heading_hierarchy_before_entry_locator():
+    document = {
+        "document": {
+            "doc_id": "doc_001",
+            "title": "Machinery's Handbook",
+        },
+        "entries": [{
+            "entry_index": 25,
+            "chunk_index": 26,
+            "page_start": 10,
+            "page_end": 10,
+            "char_count": 204,
+            "section_heading": "Table of Contents",
+            "subheading": "DIMENSIONING, GAGING, AND MEASURING",
+            "preview": "Drafting practices and dimensional data.",
+        }],
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_index.html", document=document)
+
+    normalized_html = " ".join(html.split())
+    hierarchy = "Table of Contents </span> <span class=\"hierarchy-separator\">›</span> <span>DIMENSIONING, GAGING, AND MEASURING"
+
+    assert hierarchy in normalized_html
+    assert '<span class="entry-locator">Entry 25</span>' in normalized_html
+    assert normalized_html.index("Table of Contents") < normalized_html.index("Entry 25")
+
+
 def test_structural_search_hit_uses_document_routes_not_synthetic_note_id():
     note = {
         "id": "structural:doc_001:7",

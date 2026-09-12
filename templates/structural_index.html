@@ -11,7 +11,9 @@
         .button-link { display: inline-block; padding: 0.6rem 0.8rem; background: #7bdff2; color: #111; text-decoration: none; border-radius: 4px; font-weight: bold; }
         .entry { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 1rem; margin-bottom: 0.9rem; }
         .entry-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
-        .entry-title { color: #ffd166; font-weight: bold; }
+        .entry-title { display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap; color: #ffd166; font-weight: bold; }
+        .hierarchy-separator { color: #777; }
+        .entry-locator { color: #888; font-size: 0.85rem; font-weight: normal; margin-left: 0.35rem; white-space: nowrap; }
         .entry-meta { color: #aaa; font-size: 0.95rem; margin-top: 0.25rem; }
         .preview { margin-top: 0.7rem; white-space: pre-wrap; line-height: 1.45; color: #ddd; }
     </style>
@@ -33,8 +35,18 @@
         <div class="entry-head">
             <div>
                 <div class="entry-title">
-                    Entry {{ entry.entry_index }}
-                    {% if entry.section_heading %} — {{ entry.section_heading }}{% endif %}
+                    {% if entry.section_heading %}
+                        <span>{{ entry.section_heading }}</span>
+                        {% if entry.subheading and entry.subheading != entry.section_heading %}
+                            <span class="hierarchy-separator">›</span>
+                            <span>{{ entry.subheading }}</span>
+                        {% endif %}
+                    {% elif entry.subheading %}
+                        <span>{{ entry.subheading }}</span>
+                    {% else %}
+                        <span>Unlabeled segment</span>
+                    {% endif %}
+                    <span class="entry-locator">Entry {{ entry.entry_index }}</span>
                 </div>
                 <div class="entry-meta">
                     Chunk {{ entry.chunk_index }} |

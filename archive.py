@@ -245,7 +245,16 @@ def search_structural_entries(query):
             heading = entry.get("section_heading", "")
             table_caption = entry.get("table_caption", "")
             preview = entry.get("preview", "")
-            searchable_text = entry.get("search_text") or preview
+            searchable_parts = []
+            for value in (
+                preview,
+                entry.get("search_text", ""),
+                entry.get("figure_search_text", ""),
+            ):
+                value = value.strip()
+                if value and value not in searchable_parts:
+                    searchable_parts.append(value)
+            searchable_text = "\n\n".join(searchable_parts)
 
             heading_search = heading.lower()
             table_caption_search = table_caption.lower()
@@ -524,6 +533,11 @@ def list_ingested_documents():
                 "table_layout_storage_mode",
                 "",
             ),
+            "figure_layout_file": metadata.get("figure_layout_file", ""),
+            "figure_layout_storage_mode": metadata.get(
+                "figure_layout_storage_mode",
+                "",
+            ),
             "promoted_chunk_count": metadata.get("promoted_chunk_count", 0),
 
             "metadata_file": metadata_file,
@@ -755,6 +769,72 @@ def get_table_layout_for_entry(document, entry):
     )
 
 
+def _load_figure_manifest(document):
+    manifest_path = document.get("figure_layout_file", "")
+    if not manifest_path or not os.path.isfile(manifest_path):
+        return None
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def get_figure_layouts_for_entries(document, entries):
+    manifest = _load_figure_manifest(document)
+    if manifest is None:
+        return []
+    requested_ids = []
+    for entry in entries:
+        for layout_id in entry.get("figure_layout_ids", []):
+            if layout_id not in requested_ids:
+                requested_ids.append(layout_id)
+    records_by_id = {
+        record.get("layout_id"): record
+        for record in manifest.get("figures", [])
+    }
+    return [
+        records_by_id[layout_id]
+        for layout_id in requested_ids
+        if layout_id in records_by_id
+    ]
+
+
+def get_figure_image_path(doc_id, layout_id):
+    """Resolve a manifest-listed figure image without accepting raw paths."""
+    if not doc_id or os.path.basename(doc_id) != doc_id:
+        return None
+    if not layout_id or os.path.basename(layout_id) != layout_id:
+        return None
+    document = get_ingested_document(doc_id)
+    if document is None:
+        return None
+    manifest = _load_figure_manifest(document)
+    if manifest is None:
+        return None
+    record = next(
+        (
+            item for item in manifest.get("figures", [])
+            if item.get("layout_id") == layout_id
+        ),
+        None,
+    )
+    if record is None:
+        return None
+    manifest_root = os.path.realpath(
+        os.path.dirname(document.get("figure_layout_file", ""))
+    )
+    image_path = os.path.realpath(
+        os.path.join(manifest_root, record.get("file", ""))
+    )
+    try:
+        if os.path.commonpath([manifest_root, image_path]) != manifest_root:
+            return None
+    except ValueError:
+        return None
+    return image_path if os.path.isfile(image_path) else None
+
+
 def get_structural_segment(doc_id, entry_index):
     structural_document = get_structural_index_for_document(doc_id)
 
@@ -817,6 +897,8 @@ def get_structural_segment(doc_id, entry_index):
     context_entries = []
     context_mode = "legacy_neighbors"
     semantic_unit = None
+    context_start = entry_index
+    context_end = entry_index
 
     if semantic_unit_id:
         unit_start = entry_index
@@ -840,6 +922,8 @@ def get_structural_segment(doc_id, entry_index):
             build_entry(index)
             for index in range(unit_start, unit_end + 1)
         ]
+        context_start = unit_start
+        context_end = unit_end
         context_mode = "semantic_unit"
         first_unit_entry = entries[unit_start]
         last_unit_entry = entries[unit_end]
@@ -871,6 +955,11 @@ def get_structural_segment(doc_id, entry_index):
             "table_caption": current_entry.get("table_caption"),
         }
 
+    figure_layouts = get_figure_layouts_for_entries(
+        document,
+        entries[context_start:context_end + 1],
+    )
+
     return {
         "document": document,
         "context_mode": context_mode,
@@ -879,6 +968,7 @@ def get_structural_segment(doc_id, entry_index):
         "semantic_unit": semantic_unit,
         "table_layout": table_layout,
         "table_layouts": table_layouts,
+        "figure_layouts": figure_layouts,
         "previous": build_entry(entry_index - 1),
         "current": current,
         "next": build_entry(entry_index + 1)

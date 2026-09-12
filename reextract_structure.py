@@ -10,6 +10,7 @@ from typing import Any
 from ingestion.chunkers import build_chunks
 from ingestion.cleaners import clean_extracted_text, save_cleaned_text
 from ingestion.extractors import extract_text_from_pdf, save_extracted_text
+from ingestion.figure_links import restore_figure_layout_links
 from ingestion.indexer import index_structural_doc_to_generated_note
 from ingestion.registry import DOCUMENTS_ROOT, write_metadata
 from ingestion.structural_index import build_structural_index, save_structural_index
@@ -60,6 +61,11 @@ def reextract_structural_document(
         structural_index,
         metadata,
     )
+    linked_figure_count = restore_figure_layout_links(
+        structural_index,
+        metadata,
+        cleaned_text,
+    )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     metadata_backup = doc_root / f"metadata.backup-{timestamp}.json"
@@ -89,6 +95,7 @@ def reextract_structural_document(
         "chunk_count_estimate": len(chunks),
         "structural_index_entry_count": len(structural_index),
         "table_layout_linked_entry_count": linked_table_entry_count,
+        "figure_layout_linked_count": linked_figure_count,
         "text_reextracted_at": reextracted_at,
         "structure_rebuilt_at": reextracted_at,
         "updated_at": reextracted_at,
@@ -102,6 +109,7 @@ def reextract_structural_document(
         "page_count": extraction_result["page_count"],
         "chunk_count": len(chunks),
         "table_layout_linked_entry_count": linked_table_entry_count,
+        "figure_layout_linked_count": linked_figure_count,
         "metadata_backup": str(metadata_backup),
         "extracted_text_backup": str(extracted_backup),
         "cleaned_text_backup": str(cleaned_backup),

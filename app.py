@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for, jsonify
+from flask import Flask, request, render_template, redirect, url_for, jsonify, send_file
 import os
 import archive
 from archive import load_notes, get_note_by_id, get_ingested_document, get_structural_index_for_document, get_structural_segment
@@ -213,6 +213,14 @@ def curator_document_structure_entry(doc_id, entry_index):
         return "Structural segment not available.", 404
 
     return render_template("structural_segment.html", segment=segment)
+
+
+@app.route("/curator/document/<doc_id>/figure/<layout_id>")
+def curator_document_figure(doc_id, layout_id):
+    image_path = archive.get_figure_image_path(doc_id, layout_id)
+    if image_path is None:
+        return "Figure image not available.", 404
+    return send_file(image_path, mimetype="image/png")
 
 @app.route("/curator/document/<doc_id>/reindex", methods=["GET", "POST"])
 def curator_document_reindex(doc_id):

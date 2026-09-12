@@ -61,6 +61,19 @@ The command completes extraction and rebuilding before replacing anything,
 then backs up the existing metadata, extracted text, cleaned text, and
 structural index.
 
+Caption-led vector drawings and embedded images can be rendered into linked
+figure shards. Use `--pages` for a controlled pilot before scanning every
+caption-bearing page:
+
+```bash
+python3 extract_figure_layout.py DOCUMENT_ID --pages 754
+```
+
+The command preserves the source PDF, backs up metadata and the structural
+index, and stores cropped PNG figures under the document's `figure_layouts/`
+directory. Omitting `--pages` scans pages whose extracted text contains a
+figure caption.
+
 ## Project Structure
 
 ```text

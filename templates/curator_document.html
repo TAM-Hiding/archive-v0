@@ -122,7 +122,7 @@
         {% include "partials/back_menu.html" %}
 
         {% if document.has_generated_output %}
-        <a href="/curator/document/{{ document.doc_id }}/source" class="button-link">Read Extracted Text</a>
+        <a href="/curator/document/{{ document.doc_id }}/source" class="button-link">Source Overview</a>
         {% endif %}
 
         {% if document.chunk_storage_mode == "structural_only" %}

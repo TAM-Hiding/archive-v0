@@ -172,6 +172,18 @@ def test_semantic_context_template_renders_linked_table_layout():
             ],
             "reading_order_text": "Fit Description\nRunning Parts move freely",
         },
+        "table_layouts": [{
+            "caption": "Table 1. Description of Preferred Fits",
+            "page_number": 8,
+            "row_count": 2,
+            "column_count": 2,
+            "cells": [{}, {}, {}, {}],
+            "grid": [
+                ["Fit", "Description"],
+                ["Running", "Parts move freely"],
+            ],
+            "reading_order_text": "Fit Description\nRunning Parts move freely",
+        }],
         "context_entries": [{
             "entry_index": 1,
             "entry": {
@@ -202,3 +214,50 @@ def test_semantic_context_template_renders_linked_table_layout():
     assert "Raw extracted source chunks" in html
     assert '<details class="raw-chunks">' in html
     assert '<details class="raw-chunks" open>' not in html
+
+
+def test_semantic_context_template_renders_continued_table_series():
+    segment = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "context_mode": "semantic_unit",
+        "matched_entry_index": 2,
+        "semantic_unit": {
+            "retrieval_chunk_count": 1,
+            "char_count": 100,
+        },
+        "table_layout": {"layout_id": "page_0659_table_01"},
+        "table_layouts": [
+            {
+                "caption": "Table 4. Preferred Shaft Basis Fits",
+                "page_number": 658,
+                "row_count": 2,
+                "column_count": 1,
+                "cells": [{}],
+                "grid": [["First-page data"]],
+                "reading_order_text": "First-page data",
+            },
+            {
+                "caption": "Table 4. (Continued) Preferred Shaft Basis Fits",
+                "page_number": 659,
+                "row_count": 2,
+                "column_count": 1,
+                "cells": [{}],
+                "grid": [["Continued data"]],
+                "reading_order_text": "Continued data",
+            },
+        ],
+        "context_entries": [],
+        "previous": None,
+        "current": None,
+        "next": None,
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_segment.html", segment=segment)
+
+    normalized_html = " ".join(html.split())
+    assert "Continued table series" in html
+    assert "2 PDF pages" in normalized_html
+    assert "Pages 658–659" in normalized_html
+    assert "First-page data" in html
+    assert "Continued data" in html

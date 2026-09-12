@@ -1,13 +1,20 @@
 from pathlib import Path
 
-from ingestion.registry import create_document_record
+from ingestion import registry
 
 
-def test_create_document_record(tmp_path):
+def test_create_document_record(tmp_path, monkeypatch):
+    notes_root = tmp_path / "notes"
+    archive_data_root = notes_root / "_archive_data"
+    documents_root = archive_data_root / "documents"
+    monkeypatch.setattr(registry, "NOTES_ROOT", notes_root)
+    monkeypatch.setattr(registry, "ARCHIVE_DATA_ROOT", archive_data_root)
+    monkeypatch.setattr(registry, "DOCUMENTS_ROOT", documents_root)
+
     source_file = tmp_path / "sample.pdf"
     source_file.write_bytes(b"%PDF-1.4\n% fake test pdf\n")
 
-    metadata = create_document_record(
+    metadata = registry.create_document_record(
         str(source_file),
         "fiction/short_stories",
     )
@@ -21,3 +28,5 @@ def test_create_document_record(tmp_path):
 
     assert doc_root.exists()
     assert metadata_file.exists()
+    assert doc_root.parent == documents_root
+    assert (notes_root / "fiction" / "short_stories").is_dir()

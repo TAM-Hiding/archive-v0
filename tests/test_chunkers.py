@@ -18,6 +18,7 @@ from ingestion.chunkers import (
     resolve_toc_hierarchy,
     save_chunks,
     split_block_at_table_captions,
+    split_detailed_contents_page_into_blocks,
     split_global_contents_page_into_blocks,
     split_oversized_block,
     split_page_into_blocks,
@@ -242,6 +243,76 @@ def test_global_contents_groups_wrapped_bullets_by_major_section():
     assert all(block["running_header"] == "TABLE OF CONTENTS x" for block in blocks)
     assert "ALGEBRA AND\nEQUATIONS" in blocks[0]["text"]
     assert "WORK, AND ENERGY" in blocks[1]["text"]
+
+
+def test_detailed_contents_groups_multiline_categories():
+    page_text = (
+        "TABLE OF CONTENTS\n"
+        "1\n"
+        "MATHEMATICS\n"
+        "NUMBERS, FRACTIONS, AND\n"
+        "DECIMALS\n"
+        "3 Inch to Millimeter Conversion\n"
+        "4 Numbers\n"
+        "ALGEBRA AND EQUATIONS\n"
+        "28 Algebraic Expressions\n"
+        "28 Monomials and Polynomials"
+    )
+
+    blocks = split_detailed_contents_page_into_blocks(
+        13,
+        page_text,
+        major_section_titles={"mathematics"},
+    )
+
+    assert [block["subheading"] for block in blocks] == [
+        "NUMBERS, FRACTIONS, AND DECIMALS",
+        "ALGEBRA AND EQUATIONS",
+    ]
+    assert all(block["heading"] == "Table of Contents" for block in blocks)
+    assert all(block["content_type"] == "contents" for block in blocks)
+    assert "3 Inch to Millimeter Conversion" in blocks[0]["text"]
+    assert "28 Monomials and Polynomials" in blocks[1]["text"]
+
+
+def test_build_chunks_uses_detailed_contents_categories_as_subheadings():
+    cleaned_text = (
+        "--- PAGE 1 ---\n"
+        "Each section includes a detailed Table of Contents or Index\n"
+        "MATHEMATICS 1\n"
+        "• NUMBERS, FRACTIONS, AND DECIMALS • ALGEBRA AND EQUATIONS\n"
+        "TABLE OF CONTENTS\n"
+        "\n"
+        "--- PAGE 13 ---\n"
+        "TABLE OF CONTENTS\n"
+        "1\n"
+        "MATHEMATICS\n"
+        "NUMBERS, FRACTIONS, AND\n"
+        "DECIMALS\n"
+        "3 Inch to Millimeter Conversion\n"
+        "4 Numbers\n"
+        "ALGEBRA AND EQUATIONS\n"
+        "28 Algebraic Expressions\n"
+    )
+
+    chunks = build_chunks("document_123", cleaned_text)
+    detailed_contents = [
+        chunk for chunk in chunks
+        if chunk["page_start"] == 13
+    ]
+
+    assert [chunk["subheading"] for chunk in detailed_contents] == [
+        "NUMBERS, FRACTIONS, AND DECIMALS",
+        "ALGEBRA AND EQUATIONS",
+    ]
+    assert all(
+        chunk["section_heading"] == "Table of Contents"
+        for chunk in detailed_contents
+    )
+    assert all(
+        chunk["content_type"] == "contents"
+        for chunk in detailed_contents
+    )
 
 
 def test_build_chunks_keeps_global_contents_sections_coherent():

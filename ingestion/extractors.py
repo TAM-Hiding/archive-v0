@@ -6,6 +6,39 @@ from typing import Any
 from pypdf import PdfReader
 
 
+def _looks_like_explicit_toc_page(text: str) -> bool:
+    """Return whether extracted text contains an explicit TOC page label."""
+    return any(
+        line.strip().lower() == "table of contents"
+        for line in text.splitlines()
+    )
+
+
+def _extract_pdfplumber_page_text(page: Any) -> str:
+    """Extract one page using the reading order best suited to its content.
+
+    Coordinate order keeps equations near their surrounding prose, but it
+    interleaves the columns of explicit contents pages. PDF text-flow order
+    follows those authored TOC columns correctly, so switch only for pages
+    that identify themselves as a table of contents.
+    """
+    geometric_text = page.extract_text(
+        x_tolerance=1,
+        y_tolerance=3,
+        use_text_flow=False,
+    ) or ""
+
+    if not _looks_like_explicit_toc_page(geometric_text):
+        return geometric_text
+
+    flow_text = page.extract_text(
+        x_tolerance=1,
+        y_tolerance=3,
+        use_text_flow=True,
+    ) or ""
+    return flow_text or geometric_text
+
+
 def _build_extraction_result(
     pages_output: list[dict[str, Any]],
     extractor: str,
@@ -63,11 +96,7 @@ def extract_text_from_pdf(
 
         with pdfplumber.open(pdf_file) as pdf:
             for index, page in enumerate(pdf.pages, start=1):
-                page_text = page.extract_text(
-                    x_tolerance=1,
-                    y_tolerance=3,
-                    use_text_flow=False,
-                ) or ""
+                page_text = _extract_pdfplumber_page_text(page)
                 pages_output.append({
                     "page_number": index,
                     "text": page_text.strip(),

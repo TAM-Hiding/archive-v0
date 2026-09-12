@@ -22,6 +22,9 @@
   recovery are stable enough to design against. Review information density,
   chunk-list scanning, controls, navigation, and small-screen behavior while
   preserving the current intuitive workflow.
+- Render extracted table-of-contents items as clickable links to the matching
+  section start. Resolve targets from hierarchy and printed-page metadata, with
+  a plain-text fallback when no trustworthy structural destination exists.
 - Specify and prototype the interactive **blorb tree**: a document-organization
   view whose child branch blorbs expand from a parent on hover or focus. Start
   after the hierarchy cleanup and initial UI pass, but before treating the UI

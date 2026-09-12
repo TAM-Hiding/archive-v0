@@ -111,6 +111,42 @@ def test_empty_search_page_uses_subdued_secondary_actions_and_landing_offset():
     assert 'href="/curator" class="button-secondary"' in html
 
 
+def test_add_note_uses_shared_theme_and_navigation():
+    with app.test_request_context("/"):
+        html = render_template("add_note.html", folder_tree={})
+
+    assert "archive.css" in html
+    assert '<details class="back-menu">' in html
+    assert 'class="note-form"' in html
+    assert 'class="button-primary">Save Note' in html
+    assert 'class="button-secondary">Cancel' in html
+
+
+def test_curator_launch_and_document_open_controls_are_subdued_buttons():
+    document = {
+        "doc_id": "doc_001",
+        "title": "Handbook",
+        "source_filename": "handbook.pdf",
+        "category_path": "reference",
+        "status": "chunked",
+        "page_count": 10,
+        "structural_index_entry_count": 8,
+        "chunk_count": 8,
+        "chunk_storage_mode": "structural_only",
+        "chunk_count_estimate": 8,
+        "has_generated_output": True,
+        "updated_at": "2026-09-12",
+    }
+
+    with app.test_request_context("/"):
+        dashboard = render_template("curator_dashboard.html")
+        documents = render_template("curator_documents.html", documents=[document])
+
+    assert 'href="/curator/notes" class="button-secondary"' in dashboard
+    assert 'href="/curator/documents" class="button-secondary"' in dashboard
+    assert 'href="/curator/document/doc_001" class="button-secondary">Open' in documents
+
+
 def test_search_results_do_not_keep_landing_page_offset():
     note = {
         "id": 0,

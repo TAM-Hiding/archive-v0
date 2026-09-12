@@ -27,19 +27,55 @@ h1, h2, h3,
     color: var(--archive-muted);
 }
 
-.panel, .card, .note-card, .doc-card, .result {
+.panel, .card, .note-card, .doc-card, .result,
+.entry, .segment, .chunk-block {
     background: var(--archive-panel);
     border-color: var(--archive-border);
     border-radius: var(--archive-radius);
 }
 
-.meta-panel, .path-block, details.technical-details {
+.meta-panel, .path-block, details.technical-details,
+.unit-meta, .table-layout, .raw-chunks {
     background: var(--archive-panel-soft);
     border-color: var(--archive-border);
 }
 
-.meta-label, .path-label, .actions a, .doc-actions a {
+.meta-label, .path-label, .actions a, .doc-actions a,
+.chunk-label, .segment-label, .table-fallback summary,
+.figure-labels summary {
     color: var(--archive-sage);
+}
+
+.segment.current,
+.chunk-block.current {
+    border-color: var(--archive-orange);
+    box-shadow: 0 0 0 1px rgb(253 111 47 / 0.22);
+}
+
+.segment.current .segment-label {
+    color: var(--archive-orange);
+}
+
+.unit-meta {
+    border-left-color: var(--archive-orange);
+    color: var(--archive-bone);
+}
+
+.preview, .chunk-body {
+    color: var(--archive-bone);
+}
+
+.entry-meta, .segment-meta, .chunk-title,
+.raw-chunks > summary, .figure-labels {
+    color: var(--archive-muted);
+}
+
+.hierarchy-separator, .entry-locator {
+    color: var(--archive-muted);
+}
+
+.table-grid td {
+    border-color: var(--archive-border);
 }
 
 a {

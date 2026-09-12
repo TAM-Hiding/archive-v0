@@ -68,12 +68,13 @@
             margin-bottom: 1.2rem;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 
 <div class="container">
     <div class="top-row">
-        <a href="/" class="button-link">Back to Search</a>
+        {% include "partials/back_menu.html" %}
     </div>
 
     <h1>Curator</h1>

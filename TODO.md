@@ -18,10 +18,14 @@
 
 ## UI and Source Navigation
 
-- Run a focused UI-polish pass once the current handbook hierarchy and artifact
-  recovery are stable enough to design against. Review information density,
-  chunk-list scanning, controls, navigation, and small-screen behavior while
-  preserving the current intuitive workflow.
+- Continue the UI-polish pass with progressive disclosure: keep content and
+  primary actions prominent, and place technical metadata in expandable details.
+- Add safe folder/category creation and note-moving tools to Notes Curator so
+  users can organize notes without entering arbitrary filesystem paths.
+- Add collapsible front-matter and table-of-contents groups to Structure View,
+  followed by hierarchy-based breadcrumbs across document views.
+- Add a theme customizer after the shared color variables and component styles
+  have stabilized.
 - Render extracted table-of-contents items as clickable links to the matching
   section start. Resolve targets from hierarchy and printed-page metadata, with
   a plain-text fallback when no trustworthy structural destination exists.

@@ -106,13 +106,13 @@
             font-style: italic;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 
 <div class="container">
     <div class="button-row">
-        <a href="/" class="button-link">Back to Search</a>
-        <a href="/curator" class="button-link">Back to Curator</a>
+        {% include "partials/back_menu.html" %}
     </div>
 
     <h1>Curator - Ingested Documents</h1>
@@ -130,24 +130,23 @@
                     </div>
 
                     <div class="doc-actions">
-                            <a href="/curator/document/{{ doc.doc_id }}">[Metadata]</a>
+                            <a href="/curator/document/{{ doc.doc_id }}">Open</a>
                     </div>
                 </div>
 
-                <div class="doc-meta-grid">
+                <div class="summary-strip">
+                    <span class="summary-chip"><strong>Status</strong> {{ doc.status }}</span>
+                    <span class="summary-chip"><strong>Pages</strong> {{ doc.page_count }}</span>
+                    <span class="summary-chip"><strong>Entries</strong> {{ doc.structural_index_entry_count }}</span>
+                    <span class="summary-chip"><strong>Category</strong> {{ doc.category_path }}</span>
+                </div>
+
+                <details class="technical-details">
+                    <summary>Technical details</summary>
+                    <div class="doc-meta-grid">
                     <div class="meta-item">
                         <span class="meta-label">Doc ID:</span>
                         {{ doc.doc_id }}
-                    </div>
-
-                    <div class="meta-item">
-                        <span class="meta-label">Category:</span>
-                        {{ doc.category_path }}
-                    </div>
-
-                    <div class="meta-item">
-                        <span class="meta-label">Status:</span>
-                        {{ doc.status }}
                     </div>
 
                     <div class="meta-item">
@@ -155,11 +154,6 @@
                         {{ doc.chunk_count }}
                     </div>
 
-                    <div class="meta-item">
-                        <span class="meta-label">Pages:</span>
-                        {{ doc.page_count }}
-                    </div>
-                    
                     <div class="meta-item">
                         <span class="meta-label">Storage Mode:</span>
                         {{ doc.chunk_storage_mode }}
@@ -171,11 +165,6 @@
                     </div>
 
                     <div class="meta-item">
-                        <span class="meta-label">Structural Index Entries:</span>
-                        {{ doc.structural_index_entry_count }}
-                    </div>
-
-                    <div class="meta-item">
                         <span class="meta-label">Generated Output:</span>
                         {% if doc.has_generated_output %}Present{% else %}Missing{% endif %}
                     </div>
@@ -184,7 +173,8 @@
                         <span class="meta-label">Updated:</span>
                         {{ doc.updated_at }}
                     </div>
-                </div>
+                    </div>
+                </details>
             </div>
         {% endfor %}
     {% else %}

@@ -78,6 +78,7 @@
             color: #111;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 
@@ -120,11 +121,12 @@
     {% endif %}
 
     <div class="button-row">
-        {% if document %}
+        {% if primary_return_url %}
+            <a href="{{ primary_return_url }}" class="button-link">{{ primary_return_label }}</a>
+        {% elif document %}
             <a href="/curator/document/{{ document.doc_id }}" class="button-link">Back to Document</a>
         {% endif %}
-        <a href="/curator/documents" class="button-link">Back to Documents</a>
-        <a href="/curator" class="button-link">Back to Curator</a>
+        {% include "partials/back_menu.html" %}
     </div>
 </div>
 

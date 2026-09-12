@@ -87,13 +87,13 @@
             font-weight: bold;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 
 <div class="container">
     <div class="button-row">
-        <a href="/" class="button-link">Back to Search</a>
-        <a href="/curator" class="button-link">Back to Curator</a>
+        {% include "partials/back_menu.html" %}
         <a href="/add" class="button-link">Add Note</a>
     </div>
 

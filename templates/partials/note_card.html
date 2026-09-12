@@ -6,28 +6,8 @@
         {% endif %}
     </div>
 
-    <div class="meta-row">
-        <span class="meta-label">Path:</span> {{ note.relative_path }}
-    </div>
-
-    <div class="meta-row">
-        <span class="meta-label">Category:</span> {{ note.category }}
-    </div>
-
-    <div class="meta-row">
-        <span class="meta-label">Tags:</span>
-        {% if note.tags %}
-            {{ note.tags | join(", ") }}
-        {% else %}
-            —
-        {% endif %}
-    </div>
-
-    {% if note.aliases %}
-        <div class="meta-row">
-            <span class="meta-label">Aliases:</span>
-            {{ note.aliases | join(", ") }}
-        </div>
+    {% if note.body %}
+        <div class="note-preview">{{ note.body | truncate(280, true, "…") }}</div>
     {% endif %}
 
     <div class="actions">
@@ -40,4 +20,29 @@
             <a href="/curator/note/{{ note.id }}/delete">[Delete]</a>
         {% endif %}
     </div>
+
+    <details class="technical-details">
+        <summary>Details</summary>
+
+        <div class="meta-row">
+            <span class="meta-label">Path:</span> {{ note.relative_path }}
+        </div>
+
+        <div class="meta-row">
+            <span class="meta-label">Category:</span> {{ note.category }}
+        </div>
+
+        {% if note.tags %}
+            <div class="meta-row">
+                <span class="meta-label">Tags:</span> {{ note.tags | join(", ") }}
+            </div>
+        {% endif %}
+
+        {% if note.aliases %}
+            <div class="meta-row">
+                <span class="meta-label">Aliases:</span>
+                {{ note.aliases | join(", ") }}
+            </div>
+        {% endif %}
+    </details>
 </div>

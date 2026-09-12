@@ -29,12 +29,26 @@ def test_document_page_uses_plain_language_actions_and_collapsed_details():
         html = render_template("curator_document.html", document=document)
 
     assert "Browse Sections" in html
-    assert "Read Extracted Text" in html
+    assert "Source Overview" in html
     assert "Refresh Search Index" in html
     assert "Remove Generated Notes" in html
     assert '<details class="technical-details">' in html
     assert "Re-index Generated" not in html
     assert "Open Generated Source View" not in html
+
+
+def test_structural_reading_pages_use_shared_archive_theme():
+    document = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "entries": [],
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_index.html", document=document)
+
+    assert "archive.css" in html
+    assert "Browse Sections" in html
+    assert '<details class="back-menu">' in html
 
 
 def test_delete_note_result_returns_to_notes_curator():

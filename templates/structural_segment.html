@@ -30,6 +30,8 @@
         .figure-layout img { display: block; width: 100%; height: auto; max-height: 720px; object-fit: contain; }
         .figure-caption { margin-top: 0.65rem; font-weight: bold; text-align: center; }
         .figure-meta { color: #555; margin-top: 0.25rem; text-align: center; font-size: 0.9rem; }
+        .figure-labels { margin-top: 0.8rem; color: #aaa; }
+        .figure-labels summary { cursor: pointer; color: #7bdff2; font-size: 0.92rem; }
     </style>
 </head>
 <body>
@@ -121,6 +123,7 @@
         {% endif %}
 
         {% for item in segment.context_entries %}
+        {% set rendered_body = item.display_body if item.display_body is defined else item.body %}
         <div class="segment{% if item.entry_index == segment.matched_entry_index %} current{% endif %}">
             <div class="segment-label">
                 {% if item.entry_index == segment.matched_entry_index %}Matched {% endif %}
@@ -137,10 +140,20 @@
                 {{ item.entry.section_heading }}
                 {% endif %}
             </div>
-            {% if item.entry.layout_hint == "equation" %}
-            <pre class="preview equation-preview">{{ item.body }}</pre>
-            {% else %}
-            <div class="preview">{{ item.body }}</div>
+            {% if rendered_body %}
+                {% if item.entry.layout_hint == "equation" %}
+            <pre class="preview equation-preview">{{ rendered_body }}</pre>
+                {% else %}
+            <div class="preview">{{ rendered_body }}</div>
+                {% endif %}
+            {% endif %}
+            {% if item.figure_labels %}
+            <details class="figure-labels">
+                <summary>Extracted figure labels</summary>
+                {% for labels in item.figure_labels %}
+                <div class="preview">{{ labels }}</div>
+                {% endfor %}
+            </details>
             {% endif %}
         </div>
         {% endfor %}
@@ -148,6 +161,7 @@
     {% else %}
         {% for label, item in [("Previous", segment.previous), ("Current", segment.current), ("Next", segment.next)] %}
         {% if item %}
+        {% set rendered_body = item.display_body if item.display_body is defined else item.body %}
         <div class="segment{% if label == 'Current' %} current{% endif %}">
             <div class="segment-label">{{ label }} Entry {{ item.entry_index }}</div>
             <div class="segment-meta">
@@ -158,10 +172,20 @@
                 {{ item.entry.section_heading }}
                 {% endif %}
             </div>
-            {% if item.entry.layout_hint == "equation" %}
-            <pre class="preview equation-preview">{{ item.body }}</pre>
-            {% else %}
-            <div class="preview">{{ item.body }}</div>
+            {% if rendered_body %}
+                {% if item.entry.layout_hint == "equation" %}
+            <pre class="preview equation-preview">{{ rendered_body }}</pre>
+                {% else %}
+            <div class="preview">{{ rendered_body }}</div>
+                {% endif %}
+            {% endif %}
+            {% if item.figure_labels %}
+            <details class="figure-labels">
+                <summary>Extracted figure labels</summary>
+                {% for labels in item.figure_labels %}
+                <div class="preview">{{ labels }}</div>
+                {% endfor %}
+            </details>
             {% endif %}
         </div>
         {% endif %}

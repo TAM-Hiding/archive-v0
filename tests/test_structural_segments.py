@@ -3,6 +3,36 @@ import json
 import archive
 
 
+def test_figure_labels_are_removed_only_through_the_caption():
+    body = (
+        "Anvil\nSpindle\nFig. 1. Micrometer\n"
+        "Frame: Frames of all outside micrometers are steel.\n"
+        "Fig. 2a. Cut-away Back Fig. 2b. Long Taper Back\n"
+        "Flexure: The frame shall remain rigid."
+    )
+    layouts = [
+        {
+            "caption": "Fig. 1. Micrometer",
+            "label_text": (
+                "Anvil\nSpindle\nFig. 1. Micrometer\n"
+                "Frames of all outside micrometers"
+            ),
+        },
+        {
+            "caption": "Fig. 2a. Cut-away Back Fig. 2b. Long Taper Back",
+            "label_text": "Fig. 2a. Cut-away Back Fig. 2b. Long Taper Back",
+        },
+    ]
+
+    display_body, labels = archive.remove_figure_labels_from_body(body, layouts)
+
+    assert "Anvil" not in display_body
+    assert "Fig. 2a." not in display_body
+    assert "Frame: Frames of all outside micrometers are steel." in display_body
+    assert "Flexure: The frame shall remain rigid." in display_body
+    assert len(labels) == 2
+
+
 def test_figure_image_path_requires_manifest_listed_safe_file(
     tmp_path,
     monkeypatch,

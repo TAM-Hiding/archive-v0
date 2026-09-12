@@ -11,6 +11,7 @@ from ingestion.chunkers import build_chunks
 from ingestion.indexer import index_structural_doc_to_generated_note
 from ingestion.registry import DOCUMENTS_ROOT, write_metadata
 from ingestion.structural_index import build_structural_index, save_structural_index
+from ingestion.table_links import restore_table_layout_links
 
 
 def rebuild_structural_document(
@@ -44,6 +45,10 @@ def rebuild_structural_document(
     cleaned_text = cleaned_text_path.read_text(encoding="utf-8")
     chunks = build_chunks(doc_id, cleaned_text)
     structural_index = build_structural_index(chunks)
+    linked_table_entry_count = restore_table_layout_links(
+        structural_index,
+        metadata,
+    )
 
     structural_index_path = doc_root / "structural_index.json"
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -68,6 +73,7 @@ def rebuild_structural_document(
         "chunk_count_estimate": len(chunks),
         "structural_index_file": str(structural_index_path),
         "structural_index_entry_count": len(structural_index),
+        "table_layout_linked_entry_count": linked_table_entry_count,
         "structure_rebuilt_at": rebuilt_at,
         "updated_at": rebuilt_at,
     })
@@ -84,6 +90,7 @@ def rebuild_structural_document(
             str(structural_backup) if structural_backup else None
         ),
         "generated_note_count": index_result["note_count"],
+        "table_layout_linked_entry_count": linked_table_entry_count,
     }
 
 

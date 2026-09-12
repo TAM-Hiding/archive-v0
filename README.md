@@ -15,7 +15,8 @@ It combines a Flask web interface with a deterministic PDF ingestion pipeline. D
 - Note creation and editing
 - Folder/category navigation
 - Curator dashboard for notes and ingested documents
-- PDF text extraction using `pypdf`
+- Geometry-ordered PDF text extraction using `pdfplumber`, with explicit
+  `pypdf` compatibility mode
 - Coordinate-aware ruled-table extraction using `pdfplumber`
 - Deterministic text-cleaning pipeline
 - Heading-aware and page-aware document chunking
@@ -48,6 +49,17 @@ source PDF:
 ```bash
 python3 shard_table_layout.py DOCUMENT_ID
 ```
+
+Structural-only documents created with the older `pypdf` text order can be
+re-extracted in place while retaining the same document ID and table layouts:
+
+```bash
+python3 reextract_structure.py DOCUMENT_ID
+```
+
+The command completes extraction and rebuilding before replacing anything,
+then backs up the existing metadata, extracted text, cleaned text, and
+structural index.
 
 ## Project Structure
 

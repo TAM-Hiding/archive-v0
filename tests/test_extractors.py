@@ -15,11 +15,24 @@ def test_extract_text_from_pdf(tmp_path):
     result = extract_text_from_pdf(pdf_file)
 
     assert result["success"] is True
-    assert result["extractor"] == "pypdf"
+    assert result["extractor"] == "pdfplumber"
     assert result["page_count"] == 1
     assert len(result["pages"]) == 1
     assert result["pages"][0]["page_number"] == 1
     assert "--- PAGE 1 ---" in result["text"]
+
+
+def test_extract_text_from_pdf_supports_explicit_pypdf_mode(tmp_path):
+    pdf_file = tmp_path / "sample.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    with pdf_file.open("wb") as f:
+        writer.write(f)
+
+    result = extract_text_from_pdf(pdf_file, extractor="pypdf")
+
+    assert result["extractor"] == "pypdf"
+    assert result["page_count"] == 1
 
 
 def test_save_extracted_text(tmp_path):

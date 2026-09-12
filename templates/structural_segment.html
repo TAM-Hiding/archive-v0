@@ -26,6 +26,10 @@
         .raw-chunks { margin-top: 1rem; background: #242424; border: 1px solid #3a3a3a; border-radius: 8px; padding: 0.8rem 1rem; }
         .raw-chunks > summary { cursor: pointer; color: #aaa; font-weight: bold; }
         .raw-chunks[open] > summary { margin-bottom: 1rem; }
+        .figure-layout { background: #f4f1e8; color: #111; border-radius: 8px; padding: 0.8rem; margin-bottom: 1.2rem; }
+        .figure-layout img { display: block; width: 100%; height: auto; max-height: 720px; object-fit: contain; }
+        .figure-caption { margin-top: 0.65rem; font-weight: bold; text-align: center; }
+        .figure-meta { color: #555; margin-top: 0.25rem; text-align: center; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -70,6 +74,26 @@
                 <div class="preview">{{ table_layout.reading_order_text }}</div>
             </details>
         </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if segment.figure_layouts %}
+        {% for figure in segment.figure_layouts %}
+        <figure class="figure-layout">
+            <img
+                src="/curator/document/{{ segment.document.doc_id }}/figure/{{ figure.layout_id }}"
+                alt="{{ figure.caption or 'Recovered PDF figure' }}"
+                loading="lazy"
+            >
+            <figcaption class="figure-caption">
+                {{ figure.caption or "Recovered PDF figure" }}
+            </figcaption>
+            <div class="figure-meta">
+                Page {{ figure.page_number }} |
+                {{ figure.vector_object_count }} vector objects |
+                {{ figure.embedded_image_count }} embedded images
+            </div>
+        </figure>
         {% endfor %}
     {% endif %}
 

@@ -3,6 +3,42 @@ import json
 import archive
 
 
+def test_figure_image_path_requires_manifest_listed_safe_file(
+    tmp_path,
+    monkeypatch,
+):
+    image_directory = tmp_path / "figure_layouts"
+    image_directory.mkdir()
+    image_path = image_directory / "page_0754_figure_01.png"
+    image_path.write_bytes(b"png")
+    manifest_path = tmp_path / "figure_layout.json"
+    manifest_path.write_text(
+        json.dumps({
+            "figures": [{
+                "layout_id": "page_0754_figure_01",
+                "file": "figure_layouts/page_0754_figure_01.png",
+            }],
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        archive,
+        "get_ingested_document",
+        lambda doc_id: {
+            "doc_id": doc_id,
+            "figure_layout_file": str(manifest_path),
+        },
+    )
+
+    result = archive.get_figure_image_path(
+        "doc_001",
+        "page_0754_figure_01",
+    )
+
+    assert result == str(image_path)
+    assert archive.get_figure_image_path("doc_001", "../metadata") is None
+
+
 def test_table_layout_loader_reads_only_linked_shard(tmp_path):
     shard_directory = tmp_path / "table_layouts"
     shard_directory.mkdir()

@@ -9,6 +9,7 @@ from typing import Any
 
 from ingestion.chunkers import build_chunks
 from ingestion.indexer import index_structural_doc_to_generated_note
+from ingestion.figure_links import restore_figure_layout_links
 from ingestion.registry import DOCUMENTS_ROOT, write_metadata
 from ingestion.structural_index import build_structural_index, save_structural_index
 from ingestion.table_links import restore_table_layout_links
@@ -49,6 +50,11 @@ def rebuild_structural_document(
         structural_index,
         metadata,
     )
+    linked_figure_count = restore_figure_layout_links(
+        structural_index,
+        metadata,
+        cleaned_text,
+    )
 
     structural_index_path = doc_root / "structural_index.json"
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -74,6 +80,7 @@ def rebuild_structural_document(
         "structural_index_file": str(structural_index_path),
         "structural_index_entry_count": len(structural_index),
         "table_layout_linked_entry_count": linked_table_entry_count,
+        "figure_layout_linked_count": linked_figure_count,
         "structure_rebuilt_at": rebuilt_at,
         "updated_at": rebuilt_at,
     })
@@ -91,6 +98,7 @@ def rebuild_structural_document(
         ),
         "generated_note_count": index_result["note_count"],
         "table_layout_linked_entry_count": linked_table_entry_count,
+        "figure_layout_linked_count": linked_figure_count,
     }
 
 

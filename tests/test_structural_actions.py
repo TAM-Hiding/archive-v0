@@ -142,6 +142,51 @@ def test_semantic_context_template_preserves_equation_layout():
     assert "270 × 44\nx = --------\n      40" in html
 
 
+def test_semantic_context_template_renders_recovered_figure():
+    segment = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "context_mode": "semantic_unit",
+        "matched_entry_index": 4,
+        "semantic_unit": {
+            "page_start": 754,
+            "page_end": 754,
+            "char_count": 100,
+            "retrieval_chunk_count": 1,
+        },
+        "context_entries": [{
+            "entry_index": 4,
+            "entry": {
+                "chunk_index": 5,
+                "retrieval_chunk_index": 1,
+                "retrieval_chunk_count": 1,
+                "page_start": 754,
+                "page_end": 754,
+                "char_count": 100,
+            },
+            "body": "Micrometer discussion.",
+        }],
+        "figure_layouts": [{
+            "layout_id": "page_0754_figure_01",
+            "page_number": 754,
+            "caption": "Fig. 1. Design features of a micrometer",
+            "vector_object_count": 95,
+            "embedded_image_count": 0,
+        }],
+        "table_layout": None,
+        "table_layouts": [],
+        "previous": None,
+        "current": None,
+        "next": None,
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_segment.html", segment=segment)
+
+    assert "Fig. 1. Design features of a micrometer" in html
+    assert "/curator/document/doc_001/figure/page_0754_figure_01" in html
+    assert "95 vector objects" in html
+
+
 def test_semantic_context_template_identifies_table_unit():
     segment = {
         "document": {"doc_id": "doc_001", "title": "Handbook"},

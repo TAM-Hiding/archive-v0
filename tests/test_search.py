@@ -282,3 +282,45 @@ def test_structural_table_search_uses_caption_and_full_table_text(
 
     assert len(caption_results) == 1
     assert caption_results[0][1]["meta"]["entry_index"] == 0
+
+
+def test_structural_search_includes_figure_labels_without_losing_preview(
+    tmp_path,
+    monkeypatch,
+):
+    import json
+    import archive
+
+    structural_index_file = tmp_path / "structural_index.json"
+    structural_index_file.write_text(
+        json.dumps([{
+            "entry_index": 0,
+            "chunk_index": 1,
+            "page_start": 754,
+            "page_end": 754,
+            "section_heading": "Outside Micrometer Caliper",
+            "preview": "The frame supports the micrometer spindle.",
+            "search_text": "",
+            "figure_search_text": "Anvil Barrel Thimble Graduations",
+        }]),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        archive,
+        "list_ingested_documents",
+        lambda: [{
+            "doc_id": "doc_001",
+            "title": "Handbook",
+            "source_filename": "handbook.pdf",
+            "category_path": "reference/machining",
+            "chunk_storage_mode": "structural_only",
+            "structural_index_file": str(structural_index_file),
+        }],
+    )
+
+    results = archive.search_structural_entries("graduations")
+
+    assert len(results) == 1
+    body = results[0][1]["body"]
+    assert "frame supports" in body
+    assert "Graduations" in body

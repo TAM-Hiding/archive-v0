@@ -11,11 +11,14 @@ from ingestion.chunkers import (
     infer_printed_page_offset,
     equation_layout_hint,
     is_likely_heading,
+    looks_like_global_contents_page,
+    looks_like_roman_front_matter_page,
     normalize_heading,
     parse_cleaned_text_into_pages,
     resolve_toc_hierarchy,
     save_chunks,
     split_block_at_table_captions,
+    split_global_contents_page_into_blocks,
     split_oversized_block,
     split_page_into_blocks,
     strip_repeated_page_furniture,
@@ -186,6 +189,99 @@ def test_front_matter_abstract_promotion_preserves_block_metadata():
             "text": "Abstract: Preserved metadata matters.",
         }
     ]
+
+
+def test_roman_front_matter_suppresses_inline_all_caps_false_headings():
+    page_text = (
+        "ix\n"
+        "A contributor revised the section PLASTICS starting on page 539.\n"
+        "He also contributed STATISTICAL ANALYSIS OF\n"
+        "MANUFACTURING DATA on page 123, DISC SPRINGS on page 342, and ESTIMATING\n"
+        "SPEEDS AND MACHINING POWER on page 1117, with further corrections."
+    )
+
+    assert looks_like_roman_front_matter_page(page_text) is True
+
+    blocks, final_heading, final_subheading = split_page_into_blocks(
+        9,
+        page_text,
+        inherited_heading="Acknowledgments",
+        allow_heuristic_headings=False,
+    )
+
+    assert len(blocks) == 1
+    assert blocks[0]["heading"] == "Acknowledgments"
+    assert "MANUFACTURING DATA on page 123" in blocks[0]["text"]
+    assert "SPEEDS AND MACHINING POWER on page 1117" in blocks[0]["text"]
+    assert final_heading == "Acknowledgments"
+    assert final_subheading is None
+
+
+def test_global_contents_groups_wrapped_bullets_by_major_section():
+    page_text = (
+        "x\n"
+        "Each section includes a detailed Table of Contents or Index located on the page indicated\n"
+        "MATHEMATICS 1\n"
+        "• NUMBERS, FRACTIONS, AND DECIMALS • ALGEBRA AND\n"
+        "EQUATIONS • GEOMETRY • SOLUTION OF TRIANGLES\n"
+        "MECHANICS AND STRENGTH OF MATERIALS 139\n"
+        "• MECHANICS • VELOCITY, ACCELERATION, WORK, AND ENERGY\n"
+        "TABLE OF CONTENTS"
+    )
+
+    assert looks_like_global_contents_page(page_text) is True
+
+    blocks = split_global_contents_page_into_blocks(10, page_text)
+
+    assert [block["subheading"] for block in blocks] == [
+        "MATHEMATICS",
+        "MECHANICS AND STRENGTH OF MATERIALS",
+    ]
+    assert all(block["heading"] == "Table of Contents" for block in blocks)
+    assert all(block["content_type"] == "contents" for block in blocks)
+    assert all(block["running_header"] == "TABLE OF CONTENTS x" for block in blocks)
+    assert "ALGEBRA AND\nEQUATIONS" in blocks[0]["text"]
+    assert "WORK, AND ENERGY" in blocks[1]["text"]
+
+
+def test_build_chunks_keeps_global_contents_sections_coherent():
+    cleaned_text = (
+        "--- PAGE 9 ---\n"
+        "ix\n"
+        "ACKNOWLEDGMENTS\n"
+        "A contributor supplied STATISTICAL ANALYSIS OF\n"
+        "MANUFACTURING DATA on page 123 and DISC SPRINGS on page 342.\n"
+        "\n"
+        "--- PAGE 10 ---\n"
+        "x\n"
+        "Each section includes a detailed Table of Contents or Index located on the page indicated\n"
+        "MATHEMATICS 1\n"
+        "• NUMBERS, FRACTIONS, AND DECIMALS • ALGEBRA AND\n"
+        "EQUATIONS • GEOMETRY\n"
+        "FASTENERS 1567\n"
+        "• MACHINE SCREWS AND NUTS • CAP AND SET SCREWS\n"
+    )
+
+    chunks = build_chunks("document_123", cleaned_text)
+    page_9 = [chunk for chunk in chunks if chunk["page_start"] == 9]
+    page_10 = [chunk for chunk in chunks if chunk["page_start"] == 10]
+
+    assert len({chunk["semantic_unit_id"] for chunk in page_9}) == 1
+    assert all(
+        normalize_heading(chunk["section_heading"]) == "acknowledgments"
+        for chunk in page_9
+    )
+    assert "MANUFACTURING DATA on page 123" in " ".join(
+        chunk["text"] for chunk in page_9
+    )
+
+    assert [chunk["subheading"] for chunk in page_10] == [
+        "MATHEMATICS",
+        "FASTENERS",
+    ]
+    assert all(chunk["section_heading"] == "Table of Contents" for chunk in page_10)
+    assert all(chunk["content_type"] == "contents" for chunk in page_10)
+    assert "ALGEBRA AND\nEQUATIONS" in page_10[0]["text"]
 
 def test_heading_state_persists_across_pages():
     toc_candidates = {

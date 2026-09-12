@@ -656,6 +656,38 @@ KNOWN_HEADINGS = {
     "appendix",
 }
 
+
+def is_display_math_line(text: str) -> bool:
+    """Return whether a short line is visibly mathematical, not a heading."""
+    stripped = text.strip()
+    if not stripped:
+        return False
+
+    if re.search(r"-{5,}", stripped):
+        return True
+
+    if any(operator in stripped for operator in ("=", "×", "÷", "≤", "≥")):
+        return True
+
+    return False
+
+
+def equation_layout_hint(text: str) -> str:
+    """Mark chunks whose extracted line breaks carry equation structure."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    fraction_bar_count = sum(
+        1 for line in lines if re.search(r"-{5,}", line)
+    )
+    equation_line_count = sum(
+        1 for line in lines
+        if "=" in line and re.search(r"[A-Za-z0-9]", line)
+    )
+
+    if fraction_bar_count or equation_line_count >= 2:
+        return "equation"
+
+    return ""
+
 def is_likely_heading(line: str) -> bool:
     """
     Conservative heading detection heuristic.
@@ -672,6 +704,9 @@ def is_likely_heading(line: str) -> bool:
         return False
 
     if text.endswith((".", ";", ",")):
+        return False
+
+    if is_display_math_line(text):
         return False
 
     normalized = normalize_heading(text)
@@ -1401,6 +1436,7 @@ def build_chunks(
             "estimated_printed_page": block.get("estimated_printed_page"),
             "printed_page_offset": block.get("printed_page_offset"),
             "running_header": block.get("running_header"),
+            "layout_hint": equation_layout_hint(block_text),
             "text": block_text,
             "char_count": len(block_text),
             "char_start": char_start,

@@ -62,6 +62,7 @@ def test_build_structural_index_preserves_hierarchy_metadata():
             "estimated_printed_page": 16,
             "printed_page_offset": 12,
             "running_header": "FACTORIAL 17",
+            "layout_hint": "",
             "char_count": 34,
             "char_start": 120,
             "char_end": 154,
@@ -84,6 +85,16 @@ def test_build_structural_index_uses_empty_subheading_when_missing():
     )
 
     assert result[0]["subheading"] == ""
+
+
+def test_build_structural_index_preserves_equation_layout_hint():
+    result = build_structural_index([{
+        "chunk_index": 1,
+        "text": "x = --------\n    4",
+        "layout_hint": "equation",
+    }])
+
+    assert result[0]["layout_hint"] == "equation"
 
 
 def test_structural_index_supports_legacy_printed_page_metadata():

@@ -104,6 +104,44 @@ def test_semantic_context_template_renders_children_and_highlights_match():
     assert 'class="segment current"' in html
 
 
+def test_semantic_context_template_preserves_equation_layout():
+    segment = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "context_mode": "semantic_unit",
+        "matched_entry_index": 4,
+        "semantic_unit": {
+            "page_start": 18,
+            "page_end": 18,
+            "char_count": 38,
+            "retrieval_chunk_count": 1,
+        },
+        "context_entries": [{
+            "entry_index": 4,
+            "entry": {
+                "chunk_index": 5,
+                "retrieval_chunk_index": 1,
+                "retrieval_chunk_count": 1,
+                "page_start": 18,
+                "page_end": 18,
+                "char_count": 38,
+                "layout_hint": "equation",
+            },
+            "body": "270 × 44\nx = --------\n      40",
+        }],
+        "table_layout": None,
+        "table_layouts": [],
+        "previous": None,
+        "current": None,
+        "next": None,
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_segment.html", segment=segment)
+
+    assert '<pre class="preview equation-preview">' in html
+    assert "270 × 44\nx = --------\n      40" in html
+
+
 def test_semantic_context_template_identifies_table_unit():
     segment = {
         "document": {"doc_id": "doc_001", "title": "Handbook"},

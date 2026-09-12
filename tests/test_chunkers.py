@@ -9,6 +9,7 @@ from ingestion.chunkers import (
     find_source_text_span,
     group_blocks_into_semantic_units,
     infer_printed_page_offset,
+    equation_layout_hint,
     is_likely_heading,
     normalize_heading,
     parse_cleaned_text_into_pages,
@@ -44,6 +45,24 @@ def test_long_text_is_not_heading():
     text = "A" * 81
 
     assert is_likely_heading(text) is False
+
+
+def test_display_equation_is_not_promoted_to_heading():
+    equation = "AB = A × B and A ----- B ---- C --- = (A × B × C) ÷ D"
+
+    assert is_likely_heading(equation) is False
+
+
+def test_fraction_layout_receives_equation_hint():
+    text = "Thus\n270 40 270 × 44\n--------- = ------\nx 44 40"
+
+    assert equation_layout_hint(text) == "equation"
+
+
+def test_ordinary_prose_has_no_equation_hint():
+    text = "The product of the extremes is equal to the product of the means."
+
+    assert equation_layout_hint(text) == ""
 
 
 def test_parse_cleaned_text_into_pages():

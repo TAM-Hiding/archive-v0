@@ -92,6 +92,52 @@ def test_search_result_hides_empty_tags():
     assert "Tags:" not in html
 
 
+def test_empty_search_page_uses_subdued_secondary_actions_and_landing_offset():
+    with app.test_request_context("/"):
+        html = render_template(
+            "index.html",
+            query="",
+            scope="all",
+            results=[],
+            expanded_terms=[],
+            message="",
+        )
+
+    assert "search-shell-idle" in html
+    assert 'class="search-actions"' in html
+    assert 'value="search" class="button-primary"' in html
+    assert 'value="reload" class="button-secondary"' in html
+    assert 'href="/add" class="button-secondary"' in html
+    assert 'href="/curator" class="button-secondary"' in html
+
+
+def test_search_results_do_not_keep_landing_page_offset():
+    note = {
+        "id": 0,
+        "title": "Result",
+        "tags": [],
+        "tags_display": "—",
+        "aliases": [],
+        "category": "notes",
+        "is_generated": False,
+        "meta": {},
+    }
+
+    with app.test_request_context("/"):
+        html = render_template(
+            "index.html",
+            query="result",
+            scope="all",
+            results=[(1, note, "Result preview")],
+            expanded_terms=["result"],
+            message="",
+        )
+
+    opening_shell = html.split(">", 2)[2]
+    assert 'class="container search-shell"' in opening_shell
+    assert 'class="container search-shell search-shell-idle"' not in html
+
+
 def test_notes_curator_card_leads_with_body_preview():
     note = {
         "id": 0,

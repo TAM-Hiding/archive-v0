@@ -153,6 +153,7 @@
         }
 
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 
@@ -249,10 +250,12 @@
                 </div>
 
                 <div class="meta-panel">
+                    {% if note.tags %}
                     <div class="meta-row">
                         <span class="meta-label">Tags:</span>
                         <span class="meta-value">{{ note.tags_display }}</span>
                     </div>
+                    {% endif %}
 
                     <div class="meta-row">
                         <span class="meta-label">Score:</span>

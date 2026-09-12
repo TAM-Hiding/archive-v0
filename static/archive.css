@@ -129,6 +129,37 @@ a {
     box-shadow: 0 0 0 3px rgb(220 228 184 / 0.32);
 }
 
+.note-form input,
+.note-form textarea,
+.note-form select {
+    border: 1px solid var(--archive-border);
+    background: var(--archive-panel-soft);
+    color: var(--archive-bone);
+}
+
+.note-form select {
+    margin: 0.25rem 0;
+    padding: 0.55rem;
+    border-radius: 6px;
+}
+
+.note-form input:focus,
+.note-form textarea:focus,
+.note-form select:focus {
+    outline: none;
+    border-color: var(--archive-sage);
+    box-shadow: 0 0 0 3px rgb(220 228 184 / 0.32);
+}
+
+.note-form .label {
+    color: var(--archive-sage);
+}
+
+.note-form .helper,
+.note-form .optional {
+    color: var(--archive-muted);
+}
+
 .button-link,
 .button-secondary,
 .button-primary,
@@ -149,11 +180,7 @@ a {
 }
 
 .button-link,
-.button-primary {
-    background: var(--archive-orange);
-    color: var(--archive-ink);
-}
-
+.button-primary,
 .button-secondary,
 .back-menu > summary {
     background: var(--archive-sage);
@@ -165,6 +192,12 @@ a {
 .button-secondary:hover,
 .back-menu > summary:hover {
     filter: brightness(1.06);
+}
+
+.doc-actions .button-secondary {
+    min-width: 5.5rem;
+    margin-left: 0;
+    color: var(--archive-ink);
 }
 
 .button-link:focus-visible,

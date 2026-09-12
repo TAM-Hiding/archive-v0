@@ -17,15 +17,16 @@
         .entry-meta { color: #aaa; font-size: 0.95rem; margin-top: 0.25rem; }
         .preview { margin-top: 0.7rem; white-space: pre-wrap; line-height: 1.45; color: #ddd; }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 <div class="container">
     <div class="button-row">
-        <a href="/" class="button-link">Back to Search</a>
-        <a href="/curator/document/{{ document.document.doc_id }}" class="button-link">Back to Document</a>
+        {% include "partials/back_menu.html" %}
+        <a href="/curator/document/{{ document.document.doc_id }}" class="button-secondary">Document</a>
     </div>
 
-    <h1>Structure View</h1>
+    <h1>Browse Sections</h1>
     <div class="subtitle">
         {{ document.document.title }} — {{ document.entries|length }} structural entries
     </div>

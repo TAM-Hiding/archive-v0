@@ -28,7 +28,7 @@ h1, h2, h3,
 }
 
 .panel, .card, .note-card, .doc-card, .result,
-.entry, .segment, .chunk-block {
+.entry, .segment, .chunk-block, .note-body, .empty-block {
     background: var(--archive-panel);
     border-color: var(--archive-border);
     border-radius: var(--archive-radius);
@@ -198,6 +198,38 @@ a {
     min-width: 5.5rem;
     margin-left: 0;
     color: var(--archive-ink);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.actions .button-secondary {
+    min-height: 2.25rem;
+    padding: 0.5rem 0.72rem;
+    margin-right: 0;
+    color: var(--archive-ink);
+    font-size: 0.92rem;
+}
+
+.note-body {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--archive-border);
+    white-space: pre-wrap;
+}
+
+.note-meta {
+    color: var(--archive-muted);
+}
+
+.note-meta .label {
+    color: var(--archive-sage);
+}
+
+.note-path {
+    color: var(--archive-muted);
 }
 
 .button-link:focus-visible,

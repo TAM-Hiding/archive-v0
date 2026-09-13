@@ -24,19 +24,22 @@
             color: #aaa;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
-    <h1>Editor launched</h1>
+    <div class="container">
+    <div class="button-row">
+        {% include "partials/back_menu.html" %}
+        <a href="/note/{{ note.id }}" class="button-secondary">Back to Note</a>
+    </div>
+
+    <h1>Editor Launched</h1>
 
     <p>You should now have <strong>gedit</strong> open for:</p>
     <p class="path">{{ note.path }}</p>
 
     <p>After saving your changes, go back and click <strong>Reload</strong> in The Archive™.</p>
 
-    <p>
-        <a href="/">← Back to search</a>
-        &nbsp; | &nbsp;
-        <a href="/note/{{ note.id }}">Back to note</a>
-    </p>
+    </div>
 </body>
 </html>

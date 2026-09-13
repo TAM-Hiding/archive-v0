@@ -11,13 +11,13 @@
     {% endif %}
 
     <div class="actions">
-        <a href="/note/{{ note.id }}">[Open]</a>
-        <a href="/edit/{{ note.id }}">[Edit]</a>
+        <a href="/note/{{ note.id }}" class="button-secondary">Open</a>
+        <a href="/edit/{{ note.id }}" class="button-secondary">Edit</a>
 
         {% if note.is_generated %}
-            <a href="/source/{{ note.id }}">[Source]</a>
+            <a href="/source/{{ note.id }}" class="button-secondary">Source</a>
         {% else %}
-            <a href="/curator/note/{{ note.id }}/delete">[Delete]</a>
+            <a href="/curator/note/{{ note.id }}/delete" class="button-secondary">Delete</a>
         {% endif %}
     </div>
 

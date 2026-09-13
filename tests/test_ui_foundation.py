@@ -192,3 +192,44 @@ def test_notes_curator_card_leads_with_body_preview():
     assert "Remember the setup dimensions" in html
     assert '<summary>Details</summary>' in html
     assert "Tags:" not in html
+    assert 'class="button-secondary">Open' in html
+    assert 'class="button-secondary">Edit' in html
+    assert 'class="button-secondary">Delete' in html
+
+
+def test_individual_note_and_edit_pages_use_shared_theme():
+    note = {
+        "id": 4,
+        "title": "Fixture Setup",
+        "body": "Clamp before indicating.",
+        "tags": [],
+        "aliases": [],
+        "category": "shop",
+        "path": "notes/shop/fixture_setup.md",
+    }
+
+    with app.test_request_context("/"):
+        note_html = render_template("note.html", note=note)
+        edit_html = render_template("edit_note.html", note=note)
+
+    assert "archive.css" in note_html
+    assert '<details class="back-menu">' in note_html
+    assert 'class="body note-body"' in note_html
+    assert "Tags:" not in note_html
+    assert "archive.css" in edit_html
+    assert 'class="note-form"' in edit_html
+    assert 'class="button-primary">Save Changes' in edit_html
+
+
+def test_legacy_context_and_editor_confirmation_use_shared_theme():
+    context = {"previous": None, "current": None, "next": None}
+    note = {"id": 2, "path": "notes/example.md"}
+
+    with app.test_request_context("/"):
+        context_html = render_template("source_context.html", context=context)
+        launched_html = render_template("edit_launched.html", note=note)
+
+    assert "archive.css" in context_html
+    assert '<details class="back-menu">' in context_html
+    assert "archive.css" in launched_html
+    assert "Back to Note" in launched_html

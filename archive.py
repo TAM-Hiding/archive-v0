@@ -18,6 +18,11 @@ GREEN = "\033[92m"
 RED = "\033[91m"
 MAGENTA = "\033[95m"
 
+PAGE_QUERY_PATTERN = re.compile(
+    r"\b(?:pages?|p)\.?\s*#?\s*(\d+)\b",
+    re.IGNORECASE,
+)
+
 def color_text(text, color, bold=False):
     if bold:
         return f"{BOLD}{color}{text}{RESET}"
@@ -101,6 +106,12 @@ def load_notes():
                         category = " > ".join(category_parts)
 
                     is_generated = category_parts[:1] == ["_generated"]
+                    if is_generated:
+                        note_origin = "generated"
+                    elif category_parts[:1] == ["_system"]:
+                        note_origin = "system"
+                    else:
+                        note_origin = "manual"
 
                     note = {
                         "id": len(notes),
@@ -116,7 +127,8 @@ def load_notes():
                         "path_search": path_search,
                         "category": category,
                         "category_parts": category_parts,
-                        "is_generated": is_generated
+                        "is_generated": is_generated,
+                        "note_origin": note_origin,
                     }
 
                     notes.append(note)
@@ -143,9 +155,51 @@ def highlight_text(text, terms):
                 f"\033[93m{term}\033[0m"
             )
     return text
+
+
+def parse_page_query(query):
+    """Return an explicit page locator and the remaining text query."""
+    match = PAGE_QUERY_PATTERN.search(query)
+    if match is None:
+        return None, query
+
+    page_number = int(match.group(1))
+    remaining_query = (
+        query[:match.start()] + " " + query[match.end():]
+    ).strip()
+    return page_number, remaining_query
+
+
+def value_as_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def page_range_contains(meta, page_number):
+    page_start = value_as_int(meta.get("page_start"))
+    page_end = value_as_int(meta.get("page_end"))
+    if page_start is None:
+        return False
+    if page_end is None:
+        page_end = page_start
+    return page_start <= page_number <= page_end
+
+
+def get_note_origin(note):
+    """Classify a note without requiring a storage migration."""
+    if note.get("is_generated"):
+        return "generated"
+    if note.get("category_parts", [])[:1] == ["_system"]:
+        return "system"
+    return "manual"
+
+
 def search_notes(query, notes, vocabulary, scope="all"):
+    page_number, text_query = parse_page_query(query)
     translator = str.maketrans("", "", string.punctuation)
-    clean_query = query.translate(translator)
+    clean_query = text_query.translate(translator)
 
     query_terms = clean_query.split()
     query_terms = [term for term in query_terms if len(term) > 1]
@@ -171,12 +225,29 @@ def search_notes(query, notes, vocabulary, scope="all"):
     results = []
 
     for note in notes:
-        if scope == "notes" and note.get("is_generated"):
+        note_origin = note.get("note_origin") or get_note_origin(note)
+        if scope == "notes" and note_origin != "manual":
             continue
-        if scope == "reference" and not note.get("is_generated"):
+        if scope == "reference" and note_origin != "generated":
             continue
 
         score = 0
+
+        if page_number is not None:
+            if note_origin == "generated":
+                if not page_range_contains(note.get("meta", {}), page_number):
+                    continue
+                score += 50
+            else:
+                page_phrase = re.compile(
+                    rf"\b(?:pages?|p)\.?\s*#?\s*{page_number}\b",
+                    re.IGNORECASE,
+                )
+                if not page_phrase.search(
+                    f"{note.get('title', '')}\n{note.get('body', '')}"
+                ):
+                    continue
+                score += 20
         
         for term in expanded_terms:
             if term in note["title_search"]:
@@ -221,8 +292,9 @@ def search_notes(query, notes, vocabulary, scope="all"):
     return top_results, expanded_terms
 
 def search_structural_entries(query):
+    page_number, text_query = parse_page_query(query)
     translator = str.maketrans("", "", string.punctuation)
-    clean_query = query.translate(translator).lower()
+    clean_query = text_query.translate(translator).lower()
 
     query_terms = [term for term in clean_query.split() if len(term) > 1]
     results = []
@@ -263,6 +335,11 @@ def search_structural_entries(query):
             is_first_retrieval_chunk = retrieval_chunk_index in (None, 1)
 
             score = 0
+
+            if page_number is not None:
+                if not page_range_contains(entry, page_number):
+                    continue
+                score += 50
 
             for term in query_terms:
                 if term in heading_search:

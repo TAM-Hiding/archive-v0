@@ -931,6 +931,43 @@ def normalize_table_series_caption(caption):
     return " ".join(re.findall(r"[a-z0-9]+", without_continued))
 
 
+PDF_MATH_DELIMITER_RUNS = (
+    (re.compile(r"(?:[\uf0e6-\uf0e8]\s*)+"), "("),
+    (re.compile(r"(?:[\uf0f6-\uf0f8]\s*)+"), ")"),
+    (re.compile(r"(?:[\uf0e9-\uf0eb]\s*)+"), "["),
+    (re.compile(r"(?:[\uf0f9-\uf0fb]\s*)+"), "]"),
+    (re.compile(r"(?:[\uf0ec-\uf0ef]\s*)+"), "{"),
+    (re.compile(r"(?:[\uf0fc-\uf0fe]\s*)+"), "}"),
+)
+
+
+def normalize_pdf_math_glyphs(text):
+    """Replace legacy Symbol-font delimiter pieces with readable Unicode."""
+    if not isinstance(text, str) or not text:
+        return text
+
+    normalized = text
+    for pattern, replacement in PDF_MATH_DELIMITER_RUNS:
+        normalized = pattern.sub(replacement, normalized)
+    return normalized
+
+
+def table_layout_for_display(layout):
+    """Copy a recovered layout and normalize only its displayed text."""
+    display_layout = dict(layout)
+    display_layout["caption"] = normalize_pdf_math_glyphs(
+        layout.get("caption", "")
+    )
+    display_layout["reading_order_text"] = normalize_pdf_math_glyphs(
+        layout.get("reading_order_text", "")
+    )
+    display_layout["grid"] = [
+        [normalize_pdf_math_glyphs(cell) for cell in row]
+        for row in layout.get("grid", [])
+    ]
+    return display_layout
+
+
 def _load_table_layout_shard(layout_file, layout_record):
     manifest_root = os.path.realpath(os.path.dirname(layout_file))
     shard_path = os.path.realpath(
@@ -1229,7 +1266,10 @@ def get_structural_segment(doc_id, entry_index):
 
     current = build_entry(entry_index)
     current_entry = entries[entry_index]
-    table_layouts = get_table_layouts_for_entry(document, current_entry)
+    table_layouts = [
+        table_layout_for_display(layout)
+        for layout in get_table_layouts_for_entry(document, current_entry)
+    ]
     table_layout = next(
         (
             layout
@@ -1342,7 +1382,7 @@ def get_structural_segment(doc_id, entry_index):
             item["body"],
             linked_layouts,
         )
-        item["display_body"] = display_body
+        item["display_body"] = normalize_pdf_math_glyphs(display_body)
         item["figure_labels"] = removed_labels
 
     return {

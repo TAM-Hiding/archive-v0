@@ -304,6 +304,7 @@ def search_structural_entries(query):
                     "retrieval_chunk_count": entry.get("retrieval_chunk_count"),
                     "content_type": entry.get("content_type", "prose"),
                     "table_caption": table_caption,
+                    "figure_layout_ids": entry.get("figure_layout_ids", []),
                     "page_start": entry.get("page_start"),
                     "page_end": entry.get("page_end"),
                     "structural_hit": True,
@@ -327,6 +328,71 @@ def search_structural_entries(query):
     results.sort(reverse=True, key=lambda x: x[0])
 
     return results[:5]
+
+
+FRONT_MATTER_HEADINGS = {
+    "acknowledgments",
+    "acknowledgements",
+    "about this edition",
+    "contributors",
+    "copyright",
+    "foreword",
+    "front matter",
+    "preface",
+    "title page",
+}
+
+
+def structural_front_matter_label(entry):
+    """Return a collapsible navigation label for known front-matter entries."""
+    if entry.get("content_type") == "contents":
+        return "Table of Contents"
+
+    heading = " ".join(
+        re.findall(r"[a-z0-9]+", entry.get("section_heading", "").casefold())
+    )
+    if heading not in FRONT_MATTER_HEADINGS:
+        return None
+
+    if heading == "front matter":
+        return "Front Matter"
+    return entry.get("section_heading", "").strip() or heading.title()
+
+
+def build_structural_display_items(entries):
+    """Group consecutive front matter while leaving body entries flat."""
+    display_items = []
+
+    for entry in entries:
+        label = structural_front_matter_label(entry)
+        previous = display_items[-1] if display_items else None
+
+        if label and previous and previous.get("kind") == "group" and previous.get("label") == label:
+            previous["entries"].append(entry)
+            previous["entry_count"] += 1
+            page_start = entry.get("page_start")
+            page_end = entry.get("page_end")
+            if isinstance(page_start, int):
+                previous["page_start"] = min(previous["page_start"], page_start)
+            if isinstance(page_end, int):
+                previous["page_end"] = max(previous["page_end"], page_end)
+            continue
+
+        if label:
+            page_start = entry.get("page_start")
+            page_end = entry.get("page_end")
+            display_items.append({
+                "kind": "group",
+                "label": label,
+                "entries": [entry],
+                "entry_count": 1,
+                "page_start": page_start if isinstance(page_start, int) else 0,
+                "page_end": page_end if isinstance(page_end, int) else 0,
+            })
+        else:
+            display_items.append({"kind": "entry", "entry": entry})
+
+    return display_items
 
 def extract_chunk_index_from_filename(filename):
     parts = filename.rsplit("__chunk_", 1)
@@ -614,7 +680,8 @@ def get_structural_index_for_document(doc_id):
 
     return {
         "document": document,
-        "entries": entries
+        "entries": entries,
+        "display_items": build_structural_display_items(entries),
     }
 
 

@@ -247,8 +247,41 @@
 
             <div class="result-main">
                 <div class="preview-block">
-                    <div class="preview-label">Preview</div>
-                    <div>{{ preview|safe }}</div>
+                    {% if note.meta.structural_hit and note.meta.content_type == "table" %}
+                        <a href="{{ url_for('curator_document_structure_entry', doc_id=note.meta.source_doc_id, entry_index=note.meta.entry_index) }}"
+                           class="artifact-preview artifact-table">
+                            <span class="artifact-icon" aria-hidden="true">▦</span>
+                            <span class="artifact-copy">
+                                <strong>{{ note.meta.table_caption or note.title }}</strong>
+                                <span>Table · Pages {{ note.meta.page_start }}–{{ note.meta.page_end }}</span>
+                            </span>
+                            <span class="artifact-open">Open table</span>
+                        </a>
+                        <details class="artifact-source-preview">
+                            <summary>Show matched extracted text</summary>
+                            <div class="preview">{{ preview|safe }}</div>
+                        </details>
+                    {% elif note.meta.structural_hit and note.meta.figure_layout_ids %}
+                        <a href="{{ url_for('curator_document_structure_entry', doc_id=note.meta.source_doc_id, entry_index=note.meta.entry_index) }}"
+                           class="artifact-preview artifact-figure">
+                            <span class="artifact-icon" aria-hidden="true">▧</span>
+                            <span class="artifact-copy">
+                                <strong>
+                                    {{ note.meta.figure_layout_ids|length }} recovered
+                                    figure{% if note.meta.figure_layout_ids|length != 1 %}s{% endif %}
+                                </strong>
+                                <span>Figure · Pages {{ note.meta.page_start }}–{{ note.meta.page_end }}</span>
+                            </span>
+                            <span class="artifact-open">Open figure</span>
+                        </a>
+                        <details class="artifact-source-preview">
+                            <summary>Show matched extracted text</summary>
+                            <div class="preview">{{ preview|safe }}</div>
+                        </details>
+                    {% else %}
+                        <div class="preview-label">Preview</div>
+                        <div>{{ preview|safe }}</div>
+                    {% endif %}
                 </div>
 
                 <div class="meta-panel">

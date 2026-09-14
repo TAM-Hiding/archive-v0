@@ -235,6 +235,100 @@ a {
     color: var(--archive-muted);
 }
 
+.artifact-preview {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.85rem;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--archive-border);
+    border-radius: var(--archive-radius);
+    background: var(--archive-panel-soft);
+    color: var(--archive-bone);
+    text-decoration: none;
+}
+
+.artifact-preview:hover {
+    border-color: var(--archive-sage);
+    background: var(--archive-olive);
+}
+
+.artifact-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 7px;
+    background: var(--archive-sage);
+    color: var(--archive-ink);
+    font-size: 1.45rem;
+}
+
+.artifact-copy {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.artifact-copy strong {
+    color: var(--archive-bone);
+}
+
+.artifact-copy span,
+.artifact-open {
+    color: var(--archive-muted);
+    font-size: 0.9rem;
+}
+
+.artifact-open {
+    color: var(--archive-sage);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.artifact-source-preview {
+    margin-top: 0.65rem;
+    color: var(--archive-muted);
+}
+
+.artifact-source-preview > summary {
+    color: var(--archive-sage);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.structure-group {
+    margin-bottom: 1rem;
+    border: 1px solid var(--archive-border);
+    border-radius: var(--archive-radius);
+    background: var(--archive-panel-soft);
+}
+
+.structure-group > summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    color: var(--archive-sage);
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.structure-group-meta {
+    color: var(--archive-muted);
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+.structure-group-entries {
+    padding: 0 0.8rem 0.8rem;
+}
+
+.structure-group-entries .entry:last-child {
+    margin-bottom: 0;
+}
+
 .button-link:focus-visible,
 .button-primary:focus-visible,
 .button-secondary:focus-visible,
@@ -380,5 +474,18 @@ details.technical-details[open] > summary {
 
     .search-form input {
         flex-basis: 100%;
+    }
+
+    .artifact-preview {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .artifact-open {
+        grid-column: 2;
+    }
+
+    .structure-group > summary {
+        flex-direction: column;
+        gap: 0.25rem;
     }
 }

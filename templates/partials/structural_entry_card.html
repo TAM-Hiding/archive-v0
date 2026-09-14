@@ -1,0 +1,66 @@
+<div class="entry">
+    <div class="entry-head">
+        <div>
+            <div class="entry-title">
+                {% if entry.section_heading %}
+                    <span>{{ entry.section_heading }}</span>
+                    {% if entry.subheading and entry.subheading != entry.section_heading %}
+                        <span class="hierarchy-separator">›</span>
+                        <span>{{ entry.subheading }}</span>
+                    {% endif %}
+                {% elif entry.subheading %}
+                    <span>{{ entry.subheading }}</span>
+                {% else %}
+                    <span>Unlabeled segment</span>
+                {% endif %}
+                <span class="entry-locator">Entry {{ entry.entry_index }}</span>
+            </div>
+            <div class="entry-meta">
+                Chunk {{ entry.chunk_index }} |
+                Pages {{ entry.page_start }}–{{ entry.page_end }} |
+                {{ entry.char_count }} chars
+            </div>
+        </div>
+
+        <a href="/curator/document/{{ document.document.doc_id }}/structure/{{ entry.entry_index }}" class="button-secondary">Open</a>
+    </div>
+
+    {% if entry.content_type == "table" %}
+        <a href="/curator/document/{{ document.document.doc_id }}/structure/{{ entry.entry_index }}"
+           class="artifact-preview artifact-table">
+            <span class="artifact-icon" aria-hidden="true">▦</span>
+            <span class="artifact-copy">
+                <strong>{{ entry.table_caption or "Recovered table" }}</strong>
+                <span>Table · Pages {{ entry.page_start }}–{{ entry.page_end }}</span>
+            </span>
+            <span class="artifact-open">Open table</span>
+        </a>
+        {% if entry.preview %}
+        <details class="artifact-source-preview">
+            <summary>Show extracted text preview</summary>
+            <div class="preview">{{ entry.preview }}</div>
+        </details>
+        {% endif %}
+    {% elif entry.figure_layout_ids %}
+        <a href="/curator/document/{{ document.document.doc_id }}/structure/{{ entry.entry_index }}"
+           class="artifact-preview artifact-figure">
+            <span class="artifact-icon" aria-hidden="true">▧</span>
+            <span class="artifact-copy">
+                <strong>
+                    {{ entry.figure_layout_ids|length }} recovered
+                    figure{% if entry.figure_layout_ids|length != 1 %}s{% endif %}
+                </strong>
+                <span>Figure · Pages {{ entry.page_start }}–{{ entry.page_end }}</span>
+            </span>
+            <span class="artifact-open">Open figure</span>
+        </a>
+        {% if entry.preview %}
+        <details class="artifact-source-preview">
+            <summary>Show extracted text preview</summary>
+            <div class="preview">{{ entry.preview }}</div>
+        </details>
+        {% endif %}
+    {% else %}
+        <div class="preview">{{ entry.preview }}</div>
+    {% endif %}
+</div>

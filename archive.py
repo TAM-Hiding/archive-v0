@@ -304,6 +304,7 @@ def search_structural_entries(query):
                     "retrieval_chunk_count": entry.get("retrieval_chunk_count"),
                     "content_type": entry.get("content_type", "prose"),
                     "table_caption": table_caption,
+                    "table_layout_id": entry.get("table_layout_id"),
                     "figure_layout_ids": entry.get("figure_layout_ids", []),
                     "page_start": entry.get("page_start"),
                     "page_end": entry.get("page_end"),
@@ -327,7 +328,21 @@ def search_structural_entries(query):
 
     results.sort(reverse=True, key=lambda x: x[0])
 
-    return results[:5]
+    # A recovered table or figure can span several retrieval chunks. Search
+    # each chunk for recall, but show the best-matching child only once.
+    deduplicated_results = []
+    seen_artifacts = set()
+    for score, result in results:
+        artifact_key = structural_artifact_key(result.get("meta", {}))
+        if artifact_key:
+            document_key = result.get("meta", {}).get("source_doc_id", "")
+            qualified_key = (document_key, artifact_key)
+            if qualified_key in seen_artifacts:
+                continue
+            seen_artifacts.add(qualified_key)
+        deduplicated_results.append((score, result))
+
+    return deduplicated_results[:5]
 
 
 FRONT_MATTER_HEADINGS = {
@@ -359,16 +374,108 @@ def structural_front_matter_label(entry):
     return entry.get("section_heading", "").strip() or heading.title()
 
 
+def structural_artifact_key(entry):
+    """Return a stable key for retrieval chunks representing one artifact."""
+    content_type = entry.get("content_type", "prose")
+    figure_layout_ids = tuple(sorted(entry.get("figure_layout_ids") or []))
+    semantic_unit_id = entry.get("semantic_unit_id")
+
+    if content_type == "table":
+        table_layout_id = entry.get("table_layout_id")
+        if table_layout_id:
+            return ("table-layout", table_layout_id)
+        if semantic_unit_id:
+            return ("table-unit", semantic_unit_id)
+
+    if figure_layout_ids:
+        return ("figures", figure_layout_ids)
+
+    return None
+
+
+def _merge_artifact_entry(existing, entry):
+    """Fold another retrieval chunk into an artifact navigation card."""
+    merged = dict(existing)
+    merged["display_chunk_count"] = merged.get("display_chunk_count", 1) + 1
+
+    page_starts = [
+        page for page in (merged.get("page_start"), entry.get("page_start"))
+        if isinstance(page, int)
+    ]
+    page_ends = [
+        page for page in (merged.get("page_end"), entry.get("page_end"))
+        if isinstance(page, int)
+    ]
+    if page_starts:
+        merged["page_start"] = min(page_starts)
+    if page_ends:
+        merged["page_end"] = max(page_ends)
+
+    merged["char_count"] = (
+        (merged.get("char_count") or 0) + (entry.get("char_count") or 0)
+    )
+    merged["figure_layout_ids"] = list(dict.fromkeys(
+        (merged.get("figure_layout_ids") or [])
+        + (entry.get("figure_layout_ids") or [])
+    ))
+    return merged
+
+
+def _append_display_entry(target, entry):
+    """Append an entry, coalescing adjacent chunks of the same artifact."""
+    artifact_key = structural_artifact_key(entry)
+    if target and artifact_key:
+        previous = target[-1]
+        if structural_artifact_key(previous) == artifact_key:
+            target[-1] = _merge_artifact_entry(previous, entry)
+            return
+
+    display_entry = dict(entry)
+    if artifact_key:
+        display_entry["display_chunk_count"] = 1
+    target.append(display_entry)
+
+
 def build_structural_display_items(entries):
-    """Group consecutive front matter while leaving body entries flat."""
+    """Build compact navigation groups without changing stored chunks."""
     display_items = []
 
-    for entry in entries:
-        label = structural_front_matter_label(entry)
+    # The opening contents run gives us a reliable body boundary even when
+    # title-page fragments have misleading headings. Entries through that run
+    # are front matter; explicit headings provide the nested group names and
+    # unlabeled continuations inherit the prior name. Later section-level
+    # contents remain independent body entries.
+    first_contents_index = next(
+        (
+            index
+            for index, entry in enumerate(entries)
+            if entry.get("content_type") == "contents"
+        ),
+        None,
+    )
+    front_matter_end = -1
+    if first_contents_index is not None:
+        front_matter_end = first_contents_index
+        for index in range(first_contents_index + 1, len(entries)):
+            if entries[index].get("content_type") != "contents":
+                break
+            front_matter_end = index
+    active_front_matter_label = None
+
+    for index, entry in enumerate(entries):
+        explicit_label = structural_front_matter_label(entry)
+        if index <= front_matter_end:
+            if explicit_label:
+                active_front_matter_label = explicit_label
+            elif active_front_matter_label is None:
+                active_front_matter_label = "Publication Details"
+            label = active_front_matter_label
+        else:
+            label = explicit_label
         previous = display_items[-1] if display_items else None
 
         if label and previous and previous.get("kind") == "group" and previous.get("label") == label:
-            previous["entries"].append(entry)
+            _append_display_entry(previous["entries"], entry)
             previous["entry_count"] += 1
             page_start = entry.get("page_start")
             page_end = entry.get("page_end")
@@ -384,13 +491,28 @@ def build_structural_display_items(entries):
             display_items.append({
                 "kind": "group",
                 "label": label,
-                "entries": [entry],
+                "entries": [],
                 "entry_count": 1,
                 "page_start": page_start if isinstance(page_start, int) else 0,
                 "page_end": page_end if isinstance(page_end, int) else 0,
             })
+            _append_display_entry(display_items[-1]["entries"], entry)
         else:
-            display_items.append({"kind": "entry", "entry": entry})
+            artifact_key = structural_artifact_key(entry)
+            if (
+                artifact_key
+                and previous
+                and previous.get("kind") == "entry"
+                and structural_artifact_key(previous.get("entry", {})) == artifact_key
+            ):
+                previous["entry"] = _merge_artifact_entry(
+                    previous["entry"], entry
+                )
+            else:
+                display_entry = dict(entry)
+                if artifact_key:
+                    display_entry["display_chunk_count"] = 1
+                display_items.append({"kind": "entry", "entry": display_entry})
 
     return display_items
 

@@ -187,6 +187,38 @@ def page_range_contains(meta, page_number):
     return page_start <= page_number <= page_end
 
 
+def structural_heading_is_debris(heading):
+    """Identify formula fragments and generic running headers used as titles."""
+    normalized = " ".join(re.findall(r"[a-z0-9]+", heading.casefold()))
+    if not normalized or normalized in {"table", "tables"}:
+        return True
+
+    words = re.findall(r"[a-z]+", heading.casefold())
+    return not any(len(word) >= 4 for word in words)
+
+
+def structural_result_title(entry, document):
+    """Choose a useful search label without promoting equation debris."""
+    table_caption = entry.get("table_caption", "").strip()
+    if table_caption:
+        return table_caption
+
+    for candidate in (
+        entry.get("subheading", ""),
+        entry.get("section_heading", ""),
+        entry.get("category", ""),
+        entry.get("major_section", ""),
+    ):
+        candidate = candidate.strip()
+        if candidate and not structural_heading_is_debris(candidate):
+            return candidate
+
+    page_start = entry.get("page_start")
+    if page_start is not None:
+        return f"Page {page_start} · Extracted segment"
+    return document.get("title", "")
+
+
 def get_note_origin(note):
     """Classify a note without requiring a storage migration."""
     if note.get("is_generated"):
@@ -316,6 +348,7 @@ def search_structural_entries(query):
         for entry in entries:
             heading = entry.get("section_heading", "")
             table_caption = entry.get("table_caption", "")
+            display_title = structural_result_title(entry, document)
             preview = entry.get("preview", "")
             searchable_parts = []
             for value in (
@@ -340,6 +373,10 @@ def search_structural_entries(query):
                 if not page_range_contains(entry, page_number):
                     continue
                 score += 50
+                if entry.get("content_type") == "table":
+                    score += 20
+                elif entry.get("figure_layout_ids"):
+                    score += 10
 
             for term in query_terms:
                 if term in heading_search:
@@ -354,8 +391,8 @@ def search_structural_entries(query):
 
             result = {
                 "id": f"structural:{document['doc_id']}:{entry['entry_index']}",
-                "title": table_caption or heading or document.get("title", ""),
-                "title_search": table_caption_search or heading_search,
+                "title": display_title,
+                "title_search": display_title.casefold(),
                 "tags": [],
                 "aliases": [],
                 "meta": {

@@ -17,10 +17,6 @@
 
 ## UI and Source Navigation
 
-- Separate manually authored notes from generated source notes in Notes
-  Curator and notes-only search. Classify first, default those views to manual
-  notes, and provide an explicit generated-sources filter before considering a
-  physical folder migration.
 - Continue the UI-polish pass with progressive disclosure: keep content and
   primary actions prominent, and place technical metadata in expandable details.
 - Add safe folder/category creation and note-moving tools to Notes Curator so

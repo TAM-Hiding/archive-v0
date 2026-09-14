@@ -304,6 +304,72 @@ def test_structural_page_query_returns_only_the_requested_page(
     assert results[0][1]["meta"]["page_start"] == 263
 
 
+def test_page_query_prioritizes_artifacts_and_hides_formula_titles(
+    tmp_path,
+    monkeypatch,
+):
+    import json
+    import archive
+
+    structural_index_file = tmp_path / "structural_index.json"
+    structural_index_file.write_text(
+        json.dumps([
+            {
+                "entry_index": 762,
+                "chunk_index": 763,
+                "page_start": 263,
+                "page_end": 263,
+                "section_heading": "TABLES",
+                "category": "STRENGTH OF MATERIALS",
+                "preview": "Printed page header.",
+            },
+            {
+                "entry_index": 763,
+                "chunk_index": 764,
+                "semantic_unit_id": "doc_001_unit_0763",
+                "page_start": 263,
+                "page_end": 263,
+                "section_heading": "TABLES",
+                "content_type": "table",
+                "table_caption": "Table 1. Stresses and Deflections in Beams",
+                "preview": "Recovered table.",
+            },
+            {
+                "entry_index": 764,
+                "chunk_index": 765,
+                "page_start": 263,
+                "page_end": 263,
+                "section_heading": "2ZL 2ZL 24EIL 24EIL",
+                "major_section": "MATHEMATICS",
+                "preview": "Flattened equations.",
+            },
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        archive,
+        "list_ingested_documents",
+        lambda: [{
+            "doc_id": "doc_001",
+            "title": "Machinery's Handbook",
+            "source_filename": "Machinery.pdf",
+            "category_path": "reference/machining",
+            "chunk_storage_mode": "structural_only",
+            "structural_index_file": str(structural_index_file),
+        }],
+    )
+
+    results = archive.search_structural_entries("page 263")
+
+    assert results[0][1]["meta"]["content_type"] == "table"
+    assert results[0][1]["title"].startswith("Table 1.")
+    titles = [result["title"] for _, result in results]
+    assert "TABLES" not in titles
+    assert "2ZL 2ZL 24EIL 24EIL" not in titles
+    assert "STRENGTH OF MATERIALS" in titles
+    assert "MATHEMATICS" in titles
+
+
 def test_structural_table_search_uses_caption_and_full_table_text(
     tmp_path,
     monkeypatch,

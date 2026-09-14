@@ -82,6 +82,7 @@ def index():
                     if len(note["body"]) > 360:
                         preview += "..."
 
+                preview = archive.normalize_pdf_math_glyphs(preview)
                 highlighted_preview = highlight_text_html(preview, expanded_terms)
 
                 note_display = note.copy()

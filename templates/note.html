@@ -61,39 +61,41 @@
             margin-top: 0.5rem;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
     <div class="container">
 
-        <div class="top-bar">
-            <a href="/">← Back to search</a>
-            &nbsp; | &nbsp;
-            <a href="/edit/{{ note.id }}">Edit this note</a>
+        <div class="top-bar button-row">
+            {% include "partials/back_menu.html" %}
+            <a href="/edit/{{ note.id }}" class="button-secondary">Edit Note</a>
         </div>
 
         <h1>{{ note.title }}</h1>
 
-        <div class="meta">
+        {% if note.tags %}
+        <div class="meta note-meta">
             <span class="label">Tags:</span> {{ note.tags }}
         </div>
+        {% endif %}
 
-        <div class="meta">
+        <div class="meta note-meta">
             <span class="label">Category:</span>
             <span class="category-value">{{ note.category }}</span>
         </div>
 
-        <div class="meta">
+        <div class="meta note-meta">
             <span class="label">Path:</span>
             <span class="note-path">{{ note.path }}</span>
         </div>
 
         {% if note.aliases %}
-        <div class="meta">
+        <div class="meta note-meta">
             <span class="label">Aliases:</span> {{ note.aliases }}
         </div>
         {% endif %}
 
-        <div class="body">
+        <div class="body note-body">
 {{ note.body }}
         </div>
 

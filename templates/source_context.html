@@ -72,17 +72,20 @@
             font-style: italic;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
 
 <div class="container">
     <h1>Source Context</h1>
 
-    <a href="/" class="button-link">Back to Search</a>
+    <div class="button-row">
+        {% include "partials/back_menu.html" %}
 
     {% if context.current and context.current.note.is_generated %}
-        <a href="/source/{{ context.current.note.id }}" class="button-link">Open Generated Source View</a>
+        <a href="/source/{{ context.current.note.id }}" class="button-secondary">Source Overview</a>
     {% endif %}
+    </div>
 
     {% if context.previous %}
         <div class="chunk-block">

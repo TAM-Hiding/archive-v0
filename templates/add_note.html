@@ -106,12 +106,17 @@
             color: #111;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
     <div class="container">
+        <div class="button-row">
+            {% include "partials/back_menu.html" %}
+        </div>
+
         <h1>Add Note</h1>
 
-        <form method="post">
+        <form method="post" class="note-form">
             <div class="field">
                 <label class="label" for="title">Title</label>
                 <input id="title" name="title" required>
@@ -160,8 +165,8 @@
             </div>
 
             <div class="button-row">
-                <button type="submit">Save Note</button>
-                <a href="/" class="button-link">Back to search</a>
+                <button type="submit" class="button-primary">Save Note</button>
+                <a href="/" class="button-secondary">Cancel</a>
             </div>
         </form>
     </div>

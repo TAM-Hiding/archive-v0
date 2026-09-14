@@ -117,9 +117,15 @@
             word-break: break-word;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='archive.css') }}">
 </head>
 <body>
     <div class="container">
+        <div class="button-row">
+            {% include "partials/back_menu.html" %}
+            <a href="/note/{{ note.id }}" class="button-secondary">Back to Note</a>
+        </div>
+
         <h1>Edit Note</h1>
 
         <div class="meta">
@@ -127,7 +133,7 @@
             <span class="path">{{ note.path }}</span>
         </div>
 
-        <form method="post">
+        <form method="post" class="note-form">
             <div class="field">
                 <label class="label" for="title">Title</label>
                 <input id="title" name="title" value="{{ note.title }}" required>
@@ -159,8 +165,8 @@
             </div>
 
             <div class="button-row">
-                <button type="submit">Save Changes</button>
-                <a href="/note/{{ note.id }}" class="button-link">Cancel</a>
+                <button type="submit" class="button-primary">Save Changes</button>
+                <a href="/note/{{ note.id }}" class="button-secondary">Cancel</a>
             </div>
         </form>
     </div>

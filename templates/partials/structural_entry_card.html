@@ -16,7 +16,11 @@
                 <span class="entry-locator">Entry {{ entry.entry_index }}</span>
             </div>
             <div class="entry-meta">
+                {% if entry.display_chunk_count and entry.display_chunk_count > 1 %}
+                {{ entry.display_chunk_count }} retrieval chunks |
+                {% else %}
                 Chunk {{ entry.chunk_index }} |
+                {% endif %}
                 Pages {{ entry.page_start }}–{{ entry.page_end }} |
                 {{ entry.char_count }} chars
             </div>
@@ -35,12 +39,6 @@
             </span>
             <span class="artifact-open">Open table</span>
         </a>
-        {% if entry.preview %}
-        <details class="artifact-source-preview">
-            <summary>Show extracted text preview</summary>
-            <div class="preview">{{ entry.preview }}</div>
-        </details>
-        {% endif %}
     {% elif entry.figure_layout_ids %}
         <a href="/curator/document/{{ document.document.doc_id }}/structure/{{ entry.entry_index }}"
            class="artifact-preview artifact-figure">
@@ -54,12 +52,6 @@
             </span>
             <span class="artifact-open">Open figure</span>
         </a>
-        {% if entry.preview %}
-        <details class="artifact-source-preview">
-            <summary>Show extracted text preview</summary>
-            <div class="preview">{{ entry.preview }}</div>
-        </details>
-        {% endif %}
     {% else %}
         <div class="preview">{{ entry.preview }}</div>
     {% endif %}

@@ -99,23 +99,47 @@
 
     <h1>Notes Curator</h1>
     <div class="subtitle">
-        Browse notes, generated anchors, categories, tags, aliases, and note paths.
+        Manual notes stay separate from generated source material.
     </div>
 
-    <h2>Regular Notes</h2>
+    <nav class="curator-filters" aria-label="Note type">
+        <a href="{{ url_for('curator_notes', view='manual') }}"
+           class="button-secondary{% if view == 'manual' %} is-active{% endif %}">
+            Manual <span class="filter-count">{{ counts.manual }}</span>
+        </a>
+        <a href="{{ url_for('curator_notes', view='generated') }}"
+           class="button-secondary{% if view == 'generated' %} is-active{% endif %}">
+            Generated <span class="filter-count">{{ counts.generated }}</span>
+        </a>
+        <a href="{{ url_for('curator_notes', view='system') }}"
+           class="button-secondary{% if view == 'system' %} is-active{% endif %}">
+            System <span class="filter-count">{{ counts.system }}</span>
+        </a>
+        <a href="{{ url_for('curator_notes', view='all') }}"
+           class="button-secondary{% if view == 'all' %} is-active{% endif %}">
+            All <span class="filter-count">{{ counts.all }}</span>
+        </a>
+    </nav>
+
+    {% if view in ('manual', 'all') %}
+    <h2>Manual Notes</h2>
     {% for note in regular_notes %}
         {% include "partials/note_card.html" %}
     {% else %}
         <p>No regular notes found.</p>
     {% endfor %}
+    {% endif %}
 
+    {% if view in ('system', 'all') %}
     <h2>System Notes</h2>
     {% for note in system_notes %}
         {% include "partials/note_card.html" %}
     {% else %}
         <p>No system notes found.</p>
     {% endfor %}
+    {% endif %}
 
+    {% if view in ('generated', 'all') %}
     <h2>Structural-Only Document Anchors</h2>
     {% for note in structural_only_notes %}
         {% include "partials/note_card.html" %}
@@ -129,6 +153,7 @@
     {% else %}
         <p>No persistent generated chunks found.</p>
     {% endfor %}
+    {% endif %}
 </div>
 
 </body>

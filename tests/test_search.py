@@ -302,6 +302,7 @@ def test_structural_search_includes_figure_labels_without_losing_preview(
             "preview": "The frame supports the micrometer spindle.",
             "search_text": "",
             "figure_search_text": "Anvil Barrel Thimble Graduations",
+            "figure_layout_ids": ["page_0754_figure_01"],
         }]),
         encoding="utf-8",
     )
@@ -324,3 +325,6 @@ def test_structural_search_includes_figure_labels_without_losing_preview(
     body = results[0][1]["body"]
     assert "frame supports" in body
     assert "Graduations" in body
+    assert results[0][1]["meta"]["figure_layout_ids"] == [
+        "page_0754_figure_01"
+    ]

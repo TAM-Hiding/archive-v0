@@ -157,6 +157,48 @@ def test_search_scope_filters_notes_and_reference():
     assert len(reference_results) == 1
     assert reference_results[0][1]["title"] == "Battery Manual"
 
+
+def test_manual_scope_excludes_system_notes():
+    manual = make_note(title="Shop Setup", body="fixture")
+    system = make_note(title="System Setup", body="fixture")
+    system["category_parts"] = ["_system"]
+
+    notes = [manual, system]
+    results, _ = search_notes(
+        "fixture",
+        notes,
+        build_vocabulary(notes),
+        scope="notes",
+    )
+
+    assert [note["title"] for _, note in results] == ["Shop Setup"]
+
+
+def test_explicit_page_query_uses_generated_note_page_metadata():
+    page_17 = make_note(
+        title="Page words",
+        body="See page for additional information.",
+        generated=True,
+    )
+    page_17["meta"].update({"page_start": "17", "page_end": "17"})
+    page_263 = make_note(
+        title="Target page",
+        body="Recovered handbook content.",
+        generated=True,
+    )
+    page_263["meta"].update({"page_start": "262", "page_end": "264"})
+
+    notes = [page_17, page_263]
+    results, expanded_terms = search_notes(
+        "page 263",
+        notes,
+        build_vocabulary(notes),
+        scope="reference",
+    )
+
+    assert [note["title"] for _, note in results] == ["Target page"]
+    assert expanded_terms == []
+
 def test_structural_index_entries_are_searchable(tmp_path, monkeypatch):
     import json
     import archive
@@ -211,6 +253,55 @@ def test_structural_index_entries_are_searchable(tmp_path, monkeypatch):
     assert result["meta"]["page_start"] == 42
     assert result["meta"]["structural_hit"] is True
     assert "woodruff" in result["body_search"]
+
+
+def test_structural_page_query_returns_only_the_requested_page(
+    tmp_path,
+    monkeypatch,
+):
+    import json
+    import archive
+
+    structural_index_file = tmp_path / "structural_index.json"
+    structural_index_file.write_text(
+        json.dumps([
+            {
+                "entry_index": 0,
+                "chunk_index": 1,
+                "page_start": 17,
+                "page_end": 17,
+                "section_heading": "Page References",
+                "preview": "See page 263 for another topic.",
+            },
+            {
+                "entry_index": 1,
+                "chunk_index": 2,
+                "page_start": 263,
+                "page_end": 263,
+                "section_heading": "Target Section",
+                "preview": "The requested page content.",
+            },
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        archive,
+        "list_ingested_documents",
+        lambda: [{
+            "doc_id": "doc_001",
+            "title": "Machinery's Handbook",
+            "source_filename": "Machinery.pdf",
+            "category_path": "reference/machining",
+            "chunk_storage_mode": "structural_only",
+            "structural_index_file": str(structural_index_file),
+        }],
+    )
+
+    results = archive.search_structural_entries("page 263")
+
+    assert len(results) == 1
+    assert results[0][1]["meta"]["entry_index"] == 1
+    assert results[0][1]["meta"]["page_start"] == 263
 
 
 def test_structural_table_search_uses_caption_and_full_table_text(

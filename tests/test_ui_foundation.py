@@ -1,5 +1,6 @@
 from flask import render_template
 
+import app as app_module
 from app import app
 
 
@@ -195,6 +196,80 @@ def test_notes_curator_card_leads_with_body_preview():
     assert 'class="button-secondary">Open' in html
     assert 'class="button-secondary">Edit' in html
     assert 'class="button-secondary">Delete' in html
+
+
+def test_notes_curator_defaults_to_manual_and_can_show_generated(
+    monkeypatch,
+):
+    manual_note = {
+        "id": 1,
+        "title": "Fixture Setup",
+        "body": "Manual shop note.",
+        "relative_path": "shop/fixture.md",
+        "category": "shop",
+        "category_parts": ["shop"],
+        "tags": [],
+        "aliases": [],
+        "meta": {},
+        "is_generated": False,
+        "note_origin": "manual",
+    }
+    generated_note = {
+        "id": 2,
+        "title": "Short Reference Chunk",
+        "body": "Generated source content.",
+        "relative_path": "_generated/reference/chunk.md",
+        "category": "_generated > reference",
+        "category_parts": ["_generated", "reference"],
+        "tags": ["generated"],
+        "aliases": [],
+        "meta": {"source_doc_id": "doc_001", "chunk_index": "0"},
+        "is_generated": True,
+        "note_origin": "generated",
+    }
+    monkeypatch.setattr(app_module, "refresh_archive", lambda: None)
+    monkeypatch.setattr(app_module, "notes", [manual_note, generated_note])
+
+    client = app.test_client()
+    manual_html = client.get("/curator/notes").get_data(as_text=True)
+    generated_html = client.get(
+        "/curator/notes?view=generated"
+    ).get_data(as_text=True)
+
+    assert "Fixture Setup" in manual_html
+    assert "Short Reference Chunk" not in manual_html
+    assert "Short Reference Chunk" in generated_html
+    assert "Fixture Setup" not in generated_html
+    assert "Generated <span class=\"filter-count\">1</span>" in generated_html
+
+
+def test_search_result_actions_use_sage_button_components():
+    note = {
+        "id": 4,
+        "title": "Fixture Setup",
+        "tags": [],
+        "tags_display": "—",
+        "aliases": [],
+        "category": "shop",
+        "is_generated": False,
+        "meta": {},
+    }
+
+    with app.test_request_context("/"):
+        html = render_template(
+            "index.html",
+            query="fixture",
+            scope="notes",
+            results=[(5, note, "Clamp before indicating.")],
+            expanded_terms=["fixture"],
+            message="",
+        )
+
+    assert 'class="result-title-link"' in html
+    assert 'class="button-secondary button-compact">Edit</a>' in html
+    assert "[Edit]" not in html
+    assert ">Manual Notes</option>" in html
+    assert ">Generated Sources</option>" in html
 
 
 def test_individual_note_and_edit_pages_use_shared_theme():

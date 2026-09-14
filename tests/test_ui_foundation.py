@@ -48,7 +48,7 @@ def test_structural_reading_pages_use_shared_archive_theme():
 
     assert "archive.css" in html
     assert "Browse Sections" in html
-    assert '<details class="back-menu">' in html
+    assert 'class="back-menu" data-back-menu' in html
 
 
 def test_delete_note_result_returns_to_notes_curator():
@@ -116,7 +116,7 @@ def test_add_note_uses_shared_theme_and_navigation():
         html = render_template("add_note.html", folder_tree={})
 
     assert "archive.css" in html
-    assert '<details class="back-menu">' in html
+    assert 'class="back-menu" data-back-menu' in html
     assert 'class="note-form"' in html
     assert 'class="button-primary">Save Note' in html
     assert 'class="button-secondary">Cancel' in html
@@ -213,7 +213,7 @@ def test_individual_note_and_edit_pages_use_shared_theme():
         edit_html = render_template("edit_note.html", note=note)
 
     assert "archive.css" in note_html
-    assert '<details class="back-menu">' in note_html
+    assert 'class="back-menu" data-back-menu' in note_html
     assert 'class="body note-body"' in note_html
     assert "Tags:" not in note_html
     assert "archive.css" in edit_html
@@ -230,6 +230,18 @@ def test_legacy_context_and_editor_confirmation_use_shared_theme():
         launched_html = render_template("edit_launched.html", note=note)
 
     assert "archive.css" in context_html
-    assert '<details class="back-menu">' in context_html
+    assert 'class="back-menu" data-back-menu' in context_html
     assert "archive.css" in launched_html
     assert "Back to Note" in launched_html
+
+
+def test_back_control_uses_history_with_an_accessible_destination_toggle():
+    with app.test_request_context("/"):
+        html = render_template("partials/back_menu.html")
+
+    assert 'class="back-button" data-history-back' in html
+    assert "window.history.back()" in html
+    assert 'class="back-menu-toggle"' in html
+    assert 'aria-expanded="false"' in html
+    assert 'aria-controls="archive-back-destinations"' in html
+    assert 'aria-label="Back destinations"' in html

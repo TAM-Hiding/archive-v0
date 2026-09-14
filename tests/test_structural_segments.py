@@ -3,6 +3,35 @@ import json
 import archive
 
 
+def test_legacy_symbol_math_delimiters_are_normalized_for_display():
+    source = (
+        "\uf0ee \uf0ed \uf0ec 1/3 - x/l + 1/2 "
+        "\uf0e8 \uf0e6 x/l \uf0f8 \uf0f6 squared "
+        "\uf0fe \uf0fd \uf0fc"
+    )
+
+    normalized = archive.normalize_pdf_math_glyphs(source)
+
+    assert "\uf0ee" not in normalized
+    assert "\uf0ec" not in normalized
+    assert "\uf0fe" not in normalized
+    assert normalized == "{1/3 - x/l + 1/2 (x/l )squared }"
+
+
+def test_table_math_normalization_does_not_mutate_stored_layout():
+    layout = {
+        "caption": "Beam table",
+        "grid": [["s = \uf0ee \uf0ed \uf0ec x \uf0fe \uf0fd \uf0fc"]],
+        "reading_order_text": "\uf0e8 \uf0e6 x \uf0f8 \uf0f6",
+    }
+
+    display_layout = archive.table_layout_for_display(layout)
+
+    assert display_layout["grid"] == [["s = {x }"]]
+    assert display_layout["reading_order_text"] == "(x )"
+    assert "\uf0ee" in layout["grid"][0][0]
+
+
 def test_figure_labels_are_removed_only_through_the_caption():
     body = (
         "Anvil\nSpindle\nFig. 1. Micrometer\n"

@@ -65,6 +65,12 @@ h1, h2, h3,
     color: var(--archive-bone);
 }
 
+.equation-preview,
+.table-grid,
+.table-fallback {
+    font-family: "STIX Two Math", "Cambria Math", "DejaVu Sans", sans-serif;
+}
+
 .entry-meta, .segment-meta, .chunk-title,
 .raw-chunks > summary, .figure-labels {
     color: var(--archive-muted);

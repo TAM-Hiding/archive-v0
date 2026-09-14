@@ -122,6 +122,9 @@ def curator_dashboard():
 def curator_notes():
     global notes
     refresh_archive()
+    view = request.args.get("view", "manual").strip().lower()
+    if view not in {"manual", "generated", "system", "all"}:
+        view = "manual"
 
     def sort_key(note):
         meta = note.get("meta", {})
@@ -147,15 +150,16 @@ def curator_notes():
 
     for note in notes:
         meta = note.get("meta", {})
-        category_parts = note.get("category_parts", [])
 
-        if note.get("is_generated"):
+        note_origin = note.get("note_origin") or archive.get_note_origin(note)
+
+        if note_origin == "generated":
             if meta.get("chunk_storage_mode") == "structural_only":
                 structural_only_notes.append(note)
             else:
                 persistent_generated_notes.append(note)
 
-        elif category_parts[:1] == ["_system"]:
+        elif note_origin == "system":
             system_notes.append(note)
 
         else:
@@ -167,6 +171,13 @@ def curator_notes():
         system_notes=sorted(system_notes, key=sort_key),
         structural_only_notes=sorted(structural_only_notes, key=sort_key),
         persistent_generated_notes=sorted(persistent_generated_notes, key=sort_key),
+        view=view,
+        counts={
+            "manual": len(regular_notes),
+            "generated": len(structural_only_notes) + len(persistent_generated_notes),
+            "system": len(system_notes),
+            "all": len(notes),
+        },
     )
 
 @app.route("/curator/documents")

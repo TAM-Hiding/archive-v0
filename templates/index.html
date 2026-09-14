@@ -166,8 +166,8 @@
 
     <select name="scope">
         <option value="all" {% if scope == "all" %}selected{% endif %}>All</option>
-        <option value="notes" {% if scope == "notes" %}selected{% endif %}>Notes</option>
-        <option value="reference" {% if scope == "reference" %}selected{% endif %}>Reference</option>
+        <option value="notes" {% if scope == "notes" %}selected{% endif %}>Manual Notes</option>
+        <option value="reference" {% if scope == "reference" %}selected{% endif %}>Generated Sources</option>
     </select>
 
     <span class="search-actions">
@@ -181,7 +181,7 @@
     <a href="/curator" class="button-secondary">Curator</a>
 </div>
 {% if message %}
-    <p style="color: #7bdff2; font-weight: bold;">{{ message }}</p>
+    <p class="status-message">{{ message }}</p>
 {% endif %}
 
 {% if results %}
@@ -189,60 +189,40 @@
 
     {% for score, note, preview in results %}
         <div class="result">
-            <div class="title">
+            <div class="result-header">
+              <div class="title">
                 {% if note.meta.structural_hit %}
                     <a href="{{ url_for('curator_document_structure_entry', doc_id=note.meta.source_doc_id, entry_index=note.meta.entry_index) }}"
-                       style="color: #ffd166; text-decoration: none;">
+                       class="result-title-link">
                         {{ note.title }}
                     </a>
                 {% else %}
-                    <a href="/note/{{ note.id }}" style="color: #ffd166; text-decoration: none;">
+                    <a href="/note/{{ note.id }}" class="result-title-link">
                         {{ note.title }}
                     </a>
                 {% endif %}
+              </div>
 
+              <div class="result-actions">
                 {% if note.meta.structural_hit %}
-                    <span style="margin-left: 1rem;">
-                        <a href="{{ url_for('curator_document', doc_id=note.meta.source_doc_id) }}" style="color: #7bdff2; text-decoration: none;">[Details]</a>
-                    </span>
-
-                    <span style="margin-left: 0.75rem;">
-                        <a href="{{ url_for('curator_document_structure_entry', doc_id=note.meta.source_doc_id, entry_index=note.meta.entry_index) }}" style="color: #7bdff2; text-decoration: none;">[Context]</a>
-                    </span>
-
-                    <span style="margin-left: 0.75rem;">
-                        <a href="{{ url_for('curator_document_source', doc_id=note.meta.source_doc_id) }}" style="color: #7bdff2; text-decoration: none;">[Source]</a>
-                    </span>
+                    <a href="{{ url_for('curator_document', doc_id=note.meta.source_doc_id) }}" class="button-secondary button-compact">Document</a>
+                    <a href="{{ url_for('curator_document_structure_entry', doc_id=note.meta.source_doc_id, entry_index=note.meta.entry_index) }}" class="button-secondary button-compact">Context</a>
+                    <a href="{{ url_for('curator_document_source', doc_id=note.meta.source_doc_id) }}" class="button-secondary button-compact">Source</a>
 
                 {% elif note.is_generated and note.meta.chunk_storage_mode == "structural_only" %}
-                    <span style="margin-left: 1rem;">
-                        <a href="/curator/document/{{ note.meta.source_doc_id }}" style="color: #7bdff2; text-decoration: none;">[Details]</a>
-                    </span>
-
-                    <span style="margin-left: 0.75rem;">
-                        <a href="/curator/document/{{ note.meta.source_doc_id }}/structure" style="color: #7bdff2; text-decoration: none;">[Structure]</a>
-                    </span>
-
-                    <span style="margin-left: 0.75rem;">
-                        <a href="/source/{{ note.id }}" style="color: #7bdff2; text-decoration: none;">[Source Overview]</a>
-                    </span>
+                    <a href="/curator/document/{{ note.meta.source_doc_id }}" class="button-secondary button-compact">Document</a>
+                    <a href="/curator/document/{{ note.meta.source_doc_id }}/structure" class="button-secondary button-compact">Sections</a>
+                    <a href="/source/{{ note.id }}" class="button-secondary button-compact">Source</a>
 
                 {% else %}
-                    <span style="margin-left: 1rem;">
-                        <a href="/edit/{{ note.id }}" style="color: #7bdff2; text-decoration: none;">[Edit]</a>
-                    </span>
+                    <a href="/edit/{{ note.id }}" class="button-secondary button-compact">Edit</a>
 
                     {% if note.is_generated %}
-                        <span style="margin-left: 0.75rem;">
-                            <a href="/context/{{ note.id }}" style="color: #7bdff2; text-decoration: none;">[Context]</a>
-                        </span>
-
-                        <span style="margin-left: 0.75rem;">
-                            <a href="/source/{{ note.id }}" style="color: #7bdff2; text-decoration: none;">[Source]</a>
-                        </span>
+                        <a href="/context/{{ note.id }}" class="button-secondary button-compact">Context</a>
+                        <a href="/source/{{ note.id }}" class="button-secondary button-compact">Source</a>
                     {% endif %}
                 {% endif %}
-
+              </div>
             </div>
 
             <div class="result-main">
@@ -293,6 +273,13 @@
                         <span class="meta-label">Category:</span>
                         <span class="category-value">{{ note.category }}</span>
                     </div>
+
+                    {% if note.meta.structural_hit %}
+                    <div class="meta-row">
+                        <span class="meta-label">Pages:</span>
+                        <span class="meta-value">{{ note.meta.page_start }}–{{ note.meta.page_end }}</span>
+                    </div>
+                    {% endif %}
 
                     {% if note.aliases %}
                         <div class="meta-row">

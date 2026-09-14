@@ -286,18 +286,6 @@ a {
     white-space: nowrap;
 }
 
-.artifact-source-preview {
-    margin-top: 0.65rem;
-    color: var(--archive-muted);
-}
-
-.artifact-source-preview > summary {
-    color: var(--archive-sage);
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 700;
-}
-
 .structure-group {
     margin-bottom: 1rem;
     border: 1px solid var(--archive-border);

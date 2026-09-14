@@ -371,9 +371,11 @@ def test_structural_search_hit_uses_document_routes_not_synthetic_note_id():
     assert f'href="{entry_url}"' in html
     assert 'href="/curator/document/doc_001"' in html
     assert 'href="/curator/document/doc_001/source"' in html
-    assert "[Context]" in html
-    assert "[Source]" in html
-    assert "[Edit]" not in html
+    assert 'class="button-secondary button-compact">Context' in html
+    assert 'class="button-secondary button-compact">Source' in html
+    assert ">[Context]<" not in html
+    assert ">[Source]<" not in html
+    assert ">[Edit]<" not in html
     assert "/edit/structural:doc_001:7" not in html
     assert "/context/structural:doc_001:7" not in html
     assert "/source/structural:doc_001:7" not in html

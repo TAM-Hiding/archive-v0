@@ -97,6 +97,167 @@ def test_structure_index_collapses_contents_and_front_matter_groups():
     assert "Ratio and Proportion" in html
 
 
+def test_structure_index_carries_front_matter_labels_through_fragments():
+    entries = [
+        {
+            "entry_index": 0,
+            "page_start": 3,
+            "page_end": 3,
+            "section_heading": "A REFERENCE BOOK",
+            "content_type": "prose",
+            "preview": "Title-page copy.",
+        },
+        {
+            "entry_index": 1,
+            "page_start": 5,
+            "page_end": 5,
+            "section_heading": "Copyright",
+            "content_type": "prose",
+            "preview": "Copyright notice.",
+        },
+        {
+            "entry_index": 2,
+            "page_start": 5,
+            "page_end": 5,
+            "section_heading": "30TH EDITION",
+            "content_type": "prose",
+            "preview": "First printing.",
+        },
+        {
+            "entry_index": 3,
+            "page_start": 8,
+            "page_end": 9,
+            "section_heading": "Acknowledgments",
+            "content_type": "prose",
+            "preview": "Named contributors.",
+        },
+        {
+            "entry_index": 4,
+            "page_start": 9,
+            "page_end": 9,
+            "section_heading": "MANUFACTURING DATA on page 123",
+            "content_type": "prose",
+            "preview": "Acknowledgment continuation.",
+        },
+        {
+            "entry_index": 5,
+            "page_start": 10,
+            "page_end": 10,
+            "section_heading": "Table of Contents",
+            "content_type": "contents",
+            "preview": "Main divisions.",
+        },
+        {
+            "entry_index": 6,
+            "page_start": 15,
+            "page_end": 15,
+            "section_heading": "NUMBERS, FRACTIONS, AND DECIMALS",
+            "content_type": "prose",
+            "preview": "Body content.",
+        },
+    ]
+
+    items = archive.build_structural_display_items(entries)
+
+    assert [item.get("label") for item in items[:-1]] == [
+        "Publication Details",
+        "Copyright",
+        "Acknowledgments",
+        "Table of Contents",
+    ]
+    assert items[1]["entry_count"] == 2
+    assert items[2]["entry_count"] == 2
+    assert items[-1]["kind"] == "entry"
+
+
+def test_later_section_contents_do_not_extend_the_front_matter_zone():
+    entries = [
+        {
+            "entry_index": 0,
+            "page_start": 3,
+            "page_end": 3,
+            "section_heading": "Title Page",
+            "content_type": "prose",
+        },
+        {
+            "entry_index": 1,
+            "page_start": 10,
+            "page_end": 10,
+            "section_heading": "Table of Contents",
+            "content_type": "contents",
+        },
+        {
+            "entry_index": 2,
+            "page_start": 15,
+            "page_end": 15,
+            "section_heading": "MATHEMATICS",
+            "content_type": "prose",
+        },
+        {
+            "entry_index": 3,
+            "page_start": 16,
+            "page_end": 16,
+            "section_heading": "Section Contents",
+            "content_type": "contents",
+        },
+    ]
+
+    items = archive.build_structural_display_items(entries)
+
+    assert [item.get("label") for item in items] == [
+        "Title Page",
+        "Table of Contents",
+        None,
+        "Table of Contents",
+    ]
+    assert items[2]["kind"] == "entry"
+
+
+def test_structure_index_coalesces_retrieval_chunks_for_one_table():
+    entries = [
+        {
+            "entry_index": 41,
+            "chunk_index": 42,
+            "semantic_unit_id": "doc_001_unit_0041",
+            "retrieval_chunk_index": 1,
+            "retrieval_chunk_count": 2,
+            "page_start": 15,
+            "page_end": 15,
+            "char_count": 1174,
+            "section_heading": "NUMBERS, FRACTIONS, AND DECIMALS",
+            "content_type": "table",
+            "table_caption": "Table 1. Fractional and Decimal Inch",
+            "preview": "First half of flattened table.",
+        },
+        {
+            "entry_index": 42,
+            "chunk_index": 43,
+            "semantic_unit_id": "doc_001_unit_0041",
+            "retrieval_chunk_index": 2,
+            "retrieval_chunk_count": 2,
+            "page_start": 15,
+            "page_end": 15,
+            "char_count": 1141,
+            "section_heading": "NUMBERS, FRACTIONS, AND DECIMALS",
+            "content_type": "table",
+            "table_caption": "Table 1. Fractional and Decimal Inch",
+            "preview": "Second half of flattened table.",
+        },
+    ]
+    document = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "entries": entries,
+        "display_items": archive.build_structural_display_items(entries),
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_index.html", document=document)
+
+    assert html.count('class="artifact-preview artifact-table"') == 1
+    assert "2 retrieval chunks" in " ".join(html.split())
+    assert "2315 chars" in " ".join(html.split())
+
+
 def test_structure_index_uses_artifact_cards_for_tables_and_figures():
     document = {
         "document": {"doc_id": "doc_001", "title": "Handbook"},
@@ -137,7 +298,9 @@ def test_structure_index_uses_artifact_cards_for_tables_and_figures():
     assert 'class="artifact-preview artifact-figure"' in html
     assert "1 recovered" in html
     assert "Open figure" in html
-    assert html.count("Show extracted text preview") == 2
+    assert "Show extracted text preview" not in html
+    assert "Basic Size Loose Running Free Running" not in html
+    assert "Anvil spindle thimble barrel" not in html
 
 
 def test_search_result_replaces_flattened_table_preview_with_artifact_card():
@@ -173,7 +336,8 @@ def test_search_result_replaces_flattened_table_preview_with_artifact_card():
 
     assert 'class="artifact-preview artifact-table"' in html
     assert "Open table" in html
-    assert "Show matched extracted text" in html
+    assert "Show matched extracted text" not in html
+    assert "Basic Size Loose Running Free Running" not in html
 
 
 def test_structural_search_hit_uses_document_routes_not_synthetic_note_id():

@@ -306,3 +306,45 @@ def test_legacy_structural_index_keeps_neighbor_context(monkeypatch):
     assert segment["previous"]["body"] == "Previous legacy entry."
     assert segment["current"]["body"] == "Current legacy entry."
     assert segment["next"]["body"] == "Next legacy entry."
+
+
+def test_equation_debris_uses_trustworthy_context_heading(monkeypatch):
+    entries = [
+        {
+            "entry_index": 0,
+            "chunk_index": 1,
+            "semantic_unit_id": "doc_001_unit_0001",
+            "semantic_unit_index": 1,
+            "semantic_unit_page_start": 263,
+            "semantic_unit_page_end": 263,
+            "semantic_unit_char_count": 120,
+            "retrieval_chunk_index": 1,
+            "retrieval_chunk_count": 1,
+            "page_start": 263,
+            "page_end": 263,
+            "section_heading": "24EIL 24EIL",
+            "major_section": "STRENGTH OF MATERIALS",
+            "layout_hint": "equation",
+            "char_count": 120,
+            "preview": "Flattened fraction content.",
+        }
+    ]
+    monkeypatch.setattr(
+        archive,
+        "get_structural_index_for_document",
+        lambda doc_id: {
+            "document": {"doc_id": doc_id, "title": "Handbook"},
+            "entries": entries,
+        },
+    )
+
+    segment = archive.get_structural_segment("doc_001", 0)
+
+    assert segment["semantic_unit"]["display_heading"] == (
+        "STRENGTH OF MATERIALS"
+    )
+    assert segment["semantic_unit"]["heading_is_suspect"] is True
+    assert segment["semantic_unit"]["extraction_warning"] is True
+    assert segment["context_entries"][0]["display_heading"] == (
+        "STRENGTH OF MATERIALS"
+    )

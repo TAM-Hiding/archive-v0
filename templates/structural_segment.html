@@ -112,19 +112,28 @@
         <div class="unit-meta">
             {% if segment.semantic_unit.table_caption %}
                 <strong>{{ segment.semantic_unit.table_caption }}</strong> —
+            {% elif segment.semantic_unit.display_heading %}
+                <strong>{{ segment.semantic_unit.display_heading }}</strong> —
             {% elif segment.semantic_unit.subheading %}
                 <strong>{{ segment.semantic_unit.subheading }}</strong> —
-            {% elif segment.semantic_unit.section_heading %}
-                <strong>{{ segment.semantic_unit.section_heading }}</strong> —
             {% endif %}
             Pages {{ segment.semantic_unit.page_start }}–{{ segment.semantic_unit.page_end }} |
             {{ segment.semantic_unit.retrieval_chunk_count }} retrieval chunks |
             {{ segment.semantic_unit.char_count }} chars
         </div>
+        {% if segment.semantic_unit.extraction_warning %}
+        <div class="extraction-warning" role="note">
+            <strong>Equation extraction warning:</strong>
+            this source contains layout-dependent formulas whose symbols and
+            fraction order may be incomplete. Verify numerical work against the
+            original PDF.
+        </div>
+        {% endif %}
         {% endif %}
 
         {% for item in segment.context_entries %}
         {% set rendered_body = item.display_body if item.display_body is defined else item.body %}
+        {% set item_heading = item.display_heading if item.display_heading is defined else item.entry.section_heading %}
         <div class="segment{% if item.entry_index == segment.matched_entry_index %} current{% endif %}">
             <div class="segment-label">
                 {% if item.entry_index == segment.matched_entry_index %}Matched {% endif %}
@@ -137,8 +146,8 @@
                 {% if item.entry.content_type == "table" %} |
                 Table
                 {% endif %}
-                {% if item.entry.section_heading %} |
-                {{ item.entry.section_heading }}
+                {% if item_heading %} |
+                {{ item_heading }}
                 {% endif %}
             </div>
             {% if rendered_body %}
@@ -163,14 +172,15 @@
         {% for label, item in [("Previous", segment.previous), ("Current", segment.current), ("Next", segment.next)] %}
         {% if item %}
         {% set rendered_body = item.display_body if item.display_body is defined else item.body %}
+        {% set item_heading = item.display_heading if item.display_heading is defined else item.entry.section_heading %}
         <div class="segment{% if label == 'Current' %} current{% endif %}">
             <div class="segment-label">{{ label }} Entry {{ item.entry_index }}</div>
             <div class="segment-meta">
                 Chunk {{ item.entry.chunk_index }} |
                 Pages {{ item.entry.page_start }}–{{ item.entry.page_end }} |
                 {{ item.entry.char_count }} chars
-                {% if item.entry.section_heading %} |
-                {{ item.entry.section_heading }}
+                {% if item_heading %} |
+                {{ item_heading }}
                 {% endif %}
             </div>
             {% if rendered_body %}

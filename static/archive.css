@@ -169,6 +169,20 @@ a {
     font-weight: 700;
 }
 
+.extraction-warning {
+    margin: -0.35rem 0 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--archive-orange);
+    border-radius: var(--archive-radius);
+    background: rgb(253 111 47 / 0.1);
+    color: var(--archive-bone);
+    line-height: 1.45;
+}
+
+.extraction-warning strong {
+    color: var(--archive-orange);
+}
+
 .result-actions,
 .curator-filters {
     display: flex;

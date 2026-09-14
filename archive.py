@@ -1218,6 +1218,13 @@ def get_structural_segment(doc_id, entry_index):
             "entry": entry,
             "entry_index": index,
             "body": body,
+            "display_heading": structural_result_title(entry, document),
+            "heading_is_suspect": bool(
+                entry.get("section_heading")
+                and structural_heading_is_debris(
+                    entry.get("section_heading", "")
+                )
+            ),
         }
 
     current = build_entry(entry_index)
@@ -1291,6 +1298,24 @@ def get_structural_segment(doc_id, entry_index):
             "subheading": current_entry.get("subheading"),
             "content_type": current_entry.get("content_type", "prose"),
             "table_caption": current_entry.get("table_caption"),
+            "display_heading": structural_result_title(
+                current_entry,
+                document,
+            ),
+            "heading_is_suspect": bool(
+                current_entry.get("section_heading")
+                and structural_heading_is_debris(
+                    current_entry.get("section_heading", "")
+                )
+            ),
+            "extraction_warning": any(
+                entry.get("layout_hint") == "equation"
+                and entry.get("section_heading")
+                and structural_heading_is_debris(
+                    entry.get("section_heading", "")
+                )
+                for entry in entries[unit_start:unit_end + 1]
+            ),
         }
 
     figure_layouts = get_figure_layouts_for_entries(

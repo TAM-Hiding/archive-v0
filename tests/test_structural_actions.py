@@ -481,6 +481,52 @@ def test_semantic_context_template_preserves_equation_layout():
     assert "270 × 44\nx = --------\n      40" in html
 
 
+def test_semantic_context_warns_about_suspect_equation_extraction():
+    segment = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "context_mode": "semantic_unit",
+        "matched_entry_index": 765,
+        "semantic_unit": {
+            "page_start": 263,
+            "page_end": 263,
+            "char_count": 1459,
+            "retrieval_chunk_count": 2,
+            "display_heading": "STRENGTH OF MATERIALS",
+            "extraction_warning": True,
+        },
+        "context_entries": [{
+            "entry_index": 765,
+            "display_heading": "STRENGTH OF MATERIALS",
+            "entry": {
+                "chunk_index": 766,
+                "retrieval_chunk_index": 1,
+                "retrieval_chunk_count": 2,
+                "page_start": 263,
+                "page_end": 263,
+                "char_count": 953,
+                "layout_hint": "equation",
+            },
+            "body": "2 ---W- Z ---- L",
+        }],
+        "table_layout": None,
+        "table_layouts": [],
+        "figure_layouts": [],
+        "previous": None,
+        "current": None,
+        "next": None,
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_segment.html", segment=segment)
+
+    assert "STRENGTH OF MATERIALS" in html
+    assert "Equation extraction warning:" in html
+    assert "Verify numerical work against the original PDF" in " ".join(
+        html.split()
+    )
+    assert "24EIL 24EIL" not in html
+
+
 def test_semantic_context_template_renders_recovered_figure():
     segment = {
         "document": {"doc_id": "doc_001", "title": "Handbook"},

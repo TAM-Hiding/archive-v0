@@ -163,7 +163,8 @@ a {
 .button-link,
 .button-secondary,
 .button-primary,
-.back-menu > summary {
+.back-button,
+.back-menu-toggle {
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
@@ -182,7 +183,8 @@ a {
 .button-link,
 .button-primary,
 .button-secondary,
-.back-menu > summary {
+.back-button,
+.back-menu-toggle {
     background: var(--archive-sage);
     color: var(--archive-ink);
 }
@@ -190,7 +192,8 @@ a {
 .button-link:hover,
 .button-primary:hover,
 .button-secondary:hover,
-.back-menu > summary:hover {
+.back-button:hover,
+.back-menu-toggle:hover {
     filter: brightness(1.06);
 }
 
@@ -235,7 +238,8 @@ a {
 .button-link:focus-visible,
 .button-primary:focus-visible,
 .button-secondary:focus-visible,
-.back-menu > summary:focus-visible,
+.back-button:focus-visible,
+.back-menu-toggle:focus-visible,
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
@@ -246,25 +250,19 @@ select:focus-visible {
 
 .back-menu {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
 }
 
-.back-menu > summary {
-    list-style: none;
+.back-button {
+    border-radius: 6px 0 0 6px;
 }
 
-.back-menu > summary::-webkit-details-marker {
-    display: none;
-}
-
-.back-menu > summary::after {
-    content: "▾";
-    margin-left: 0.55rem;
-    font-size: 0.8em;
-}
-
-.back-menu[open] > summary::after {
-    content: "▴";
+.back-menu-toggle {
+    min-width: 2.2rem;
+    padding-right: 0.55rem;
+    padding-left: 0.55rem;
+    border-left-color: rgb(33 31 26 / 0.25);
+    border-radius: 0 6px 6px 0;
 }
 
 .back-menu-list {
@@ -278,6 +276,19 @@ select:focus-visible {
     border: 1px solid var(--archive-border);
     border-radius: 8px;
     box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-0.25rem);
+    transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+}
+
+.back-menu:hover .back-menu-list,
+.back-menu.menu-open .back-menu-list {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
 }
 
 .back-menu-list a {

@@ -1,9 +1,66 @@
-<details class="back-menu">
-    <summary>Back</summary>
-    <nav class="back-menu-list" aria-label="Back destinations">
+<div class="back-menu" data-back-menu>
+    <a href="/" class="back-button" data-history-back>Back</a>
+    <button
+        type="button"
+        class="back-menu-toggle"
+        aria-label="Choose a back destination"
+        aria-expanded="false"
+        aria-controls="archive-back-destinations"
+    >▾</button>
+    <nav
+        class="back-menu-list"
+        id="archive-back-destinations"
+        aria-label="Back destinations"
+    >
         <a href="/">Search</a>
         <a href="/curator">Curator Home</a>
         <a href="/curator/notes">Notes</a>
         <a href="/curator/documents">Documents</a>
     </nav>
-</details>
+</div>
+<script>
+(() => {
+    const script = document.currentScript;
+    const menu = script.previousElementSibling;
+    const backButton = menu.querySelector("[data-history-back]");
+    const toggle = menu.querySelector(".back-menu-toggle");
+
+    backButton.addEventListener("click", event => {
+        if (window.history.length > 1) {
+            event.preventDefault();
+            window.history.back();
+        }
+    });
+
+    const setOpen = open => {
+        menu.classList.toggle("menu-open", open);
+        toggle.setAttribute("aria-expanded", String(open));
+    };
+
+    toggle.addEventListener("click", event => {
+        event.stopPropagation();
+        setOpen(!menu.classList.contains("menu-open"));
+    });
+
+    menu.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            setOpen(false);
+            toggle.focus();
+        }
+    });
+
+    menu.addEventListener("focusout", () => {
+        window.setTimeout(() => {
+            if (!menu.contains(document.activeElement)) {
+                setOpen(false);
+            }
+        }, 0);
+    });
+
+    document.addEventListener("click", event => {
+        if (!menu.contains(event.target)) {
+            setOpen(false);
+        }
+    });
+})();
+</script>

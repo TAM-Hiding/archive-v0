@@ -31,36 +31,25 @@
         {{ document.document.title }} — {{ document.entries|length }} structural entries
     </div>
 
-    {% for entry in document.entries %}
-    <div class="entry">
-        <div class="entry-head">
-            <div>
-                <div class="entry-title">
-                    {% if entry.section_heading %}
-                        <span>{{ entry.section_heading }}</span>
-                        {% if entry.subheading and entry.subheading != entry.section_heading %}
-                            <span class="hierarchy-separator">›</span>
-                            <span>{{ entry.subheading }}</span>
-                        {% endif %}
-                    {% elif entry.subheading %}
-                        <span>{{ entry.subheading }}</span>
-                    {% else %}
-                        <span>Unlabeled segment</span>
-                    {% endif %}
-                    <span class="entry-locator">Entry {{ entry.entry_index }}</span>
-                </div>
-                <div class="entry-meta">
-                    Chunk {{ entry.chunk_index }} |
-                    Pages {{ entry.page_start }}–{{ entry.page_end }} |
-                    {{ entry.char_count }} chars
-                </div>
+    {% for item in document.display_items|default(document.entries) %}
+        {% if item.kind == "group" %}
+        <details class="structure-group">
+            <summary>
+                <span class="structure-group-title">{{ item.label }}</span>
+                <span class="structure-group-meta">
+                    {{ item.entry_count }} entries · Pages {{ item.page_start }}–{{ item.page_end }}
+                </span>
+            </summary>
+            <div class="structure-group-entries">
+                {% for entry in item.entries %}
+                    {% include "partials/structural_entry_card.html" %}
+                {% endfor %}
             </div>
-
-            <a href="/curator/document/{{ document.document.doc_id }}/structure/{{ entry.entry_index }}" class="button-link">Open Segment</a>
-        </div>
-
-        <div class="preview">{{ entry.preview }}</div>
-    </div>
+        </details>
+        {% else %}
+            {% set entry = item.entry if item.entry is defined else item %}
+            {% include "partials/structural_entry_card.html" %}
+        {% endif %}
     {% endfor %}
 </div>
 </body>

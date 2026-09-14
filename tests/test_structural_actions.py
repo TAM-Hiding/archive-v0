@@ -1,5 +1,6 @@
 from flask import render_template
 
+import archive
 from app import app
 
 
@@ -31,6 +32,148 @@ def test_structure_index_renders_heading_hierarchy_before_entry_locator():
     assert "<span>DIMENSIONING, GAGING, AND MEASURING</span>" in normalized_html
     assert '<span class="entry-locator">Entry 25</span>' in normalized_html
     assert normalized_html.index("Table of Contents") < normalized_html.index("Entry 25")
+
+
+def test_structure_index_collapses_contents_and_front_matter_groups():
+    entries = [
+        {
+            "entry_index": 1,
+            "chunk_index": 2,
+            "page_start": 9,
+            "page_end": 9,
+            "char_count": 100,
+            "section_heading": "Acknowledgments",
+            "subheading": "",
+            "content_type": "prose",
+            "preview": "Thanks to the contributors.",
+        },
+        {
+            "entry_index": 2,
+            "chunk_index": 3,
+            "page_start": 10,
+            "page_end": 10,
+            "char_count": 200,
+            "section_heading": "Table of Contents",
+            "subheading": "MACHINING OPERATIONS",
+            "content_type": "contents",
+            "preview": "Cutting speeds and feeds.",
+        },
+        {
+            "entry_index": 3,
+            "chunk_index": 4,
+            "page_start": 11,
+            "page_end": 11,
+            "char_count": 180,
+            "section_heading": "Table of Contents",
+            "subheading": "FASTENERS",
+            "content_type": "contents",
+            "preview": "Threaded fasteners.",
+        },
+        {
+            "entry_index": 4,
+            "chunk_index": 5,
+            "page_start": 17,
+            "page_end": 17,
+            "char_count": 300,
+            "section_heading": "Ratio and Proportion",
+            "subheading": "",
+            "content_type": "prose",
+            "preview": "Ratios compare two quantities.",
+        },
+    ]
+    document = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "entries": entries,
+        "display_items": archive.build_structural_display_items(entries),
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_index.html", document=document)
+
+    assert html.count('<details class="structure-group">') == 2
+    assert "Acknowledgments" in html
+    assert "Table of Contents" in html
+    assert "2 entries · Pages 10–11" in " ".join(html.split())
+    assert "Ratio and Proportion" in html
+
+
+def test_structure_index_uses_artifact_cards_for_tables_and_figures():
+    document = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "entries": [
+            {
+                "entry_index": 7,
+                "chunk_index": 8,
+                "page_start": 654,
+                "page_end": 654,
+                "char_count": 900,
+                "section_heading": "Preferred Fits",
+                "subheading": "",
+                "content_type": "table",
+                "table_caption": "Table 2. Metric Clearance Fits",
+                "preview": "Basic Size Loose Running Free Running",
+            },
+            {
+                "entry_index": 8,
+                "chunk_index": 9,
+                "page_start": 754,
+                "page_end": 754,
+                "char_count": 700,
+                "section_heading": "Caliper Micrometer",
+                "subheading": "",
+                "content_type": "prose",
+                "figure_layout_ids": ["page_0754_figure_01"],
+                "preview": "Anvil spindle thimble barrel",
+            },
+        ],
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_index.html", document=document)
+
+    assert 'class="artifact-preview artifact-table"' in html
+    assert "Table 2. Metric Clearance Fits" in html
+    assert "Open table" in html
+    assert 'class="artifact-preview artifact-figure"' in html
+    assert "1 recovered" in html
+    assert "Open figure" in html
+    assert html.count("Show extracted text preview") == 2
+
+
+def test_search_result_replaces_flattened_table_preview_with_artifact_card():
+    note = {
+        "id": "structural:doc_001:7",
+        "title": "Table 2. Metric Clearance Fits",
+        "tags": [],
+        "tags_display": "—",
+        "aliases": [],
+        "category": "reference > machining",
+        "is_generated": True,
+        "meta": {
+            "structural_hit": True,
+            "source_doc_id": "doc_001",
+            "entry_index": 7,
+            "content_type": "table",
+            "table_caption": "Table 2. Metric Clearance Fits",
+            "figure_layout_ids": [],
+            "page_start": 654,
+            "page_end": 654,
+        },
+    }
+
+    with app.test_request_context("/"):
+        html = render_template(
+            "index.html",
+            query="clearance",
+            scope="reference",
+            results=[(5, note, "Basic Size Loose Running Free Running")],
+            expanded_terms=["clearance"],
+            message="",
+        )
+
+    assert 'class="artifact-preview artifact-table"' in html
+    assert "Open table" in html
+    assert "Show matched extracted text" in html
 
 
 def test_structural_search_hit_uses_document_routes_not_synthetic_note_id():

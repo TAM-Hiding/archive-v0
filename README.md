@@ -88,3 +88,11 @@ archive-v0/
 ├── requirements.txt       # Python dependencies
 ├── CHANGELOG.md           # Project history
 └── TODO.md                # Planned work
+
+## License
+
+Archive v0 source code is licensed under the [MIT License](LICENSE).
+
+Documents, books, PDFs, datasets, and other third-party materials processed
+or ingested by Archive are not covered by this license and remain subject to
+their respective copyrights and licenses.

@@ -8,6 +8,8 @@
 
 ## Document Recovery
 
+- Anchor Archive storage paths to the repository/application root while
+  preserving compatibility with existing metadata that stores relative paths.
 - Validate figure extraction across varied diagrams, photographs, charts, and
   multi-panel captions before running a whole-document figure scan.
 - Improve geometric reconstruction of stacked fractions and other display

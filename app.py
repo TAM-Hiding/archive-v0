@@ -234,6 +234,14 @@ def curator_document_figure(doc_id, layout_id):
         return "Figure image not available.", 404
     return send_file(image_path, mimetype="image/png")
 
+
+@app.route("/curator/document/<doc_id>/source/page/<int:page_number>.png")
+def curator_document_source_page(doc_id, page_number):
+    image_path = archive.get_source_page_preview_path(doc_id, page_number)
+    if image_path is None:
+        return "Source page preview not available.", 404
+    return send_file(image_path, mimetype="image/png")
+
 @app.route("/curator/document/<doc_id>/reindex", methods=["GET", "POST"])
 def curator_document_reindex(doc_id):
     document = archive.get_ingested_document(doc_id)

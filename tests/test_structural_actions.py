@@ -527,6 +527,55 @@ def test_semantic_context_warns_about_suspect_equation_extraction():
     assert "24EIL 24EIL" not in html
 
 
+def test_semantic_context_opens_original_pdf_for_suspect_equations():
+    segment = {
+        "document": {"doc_id": "doc_001", "title": "Handbook"},
+        "context_mode": "semantic_unit",
+        "matched_entry_index": 765,
+        "semantic_unit": {
+            "page_start": 263,
+            "page_end": 263,
+            "char_count": 1459,
+            "retrieval_chunk_count": 1,
+        },
+        "source_verification_pages": [263],
+        "source_verification_open": True,
+        "table_layout": None,
+        "table_layouts": [],
+        "figure_layouts": [],
+        "context_entries": [],
+        "previous": None,
+        "current": None,
+        "next": None,
+    }
+
+    with app.test_request_context("/"):
+        html = render_template("structural_segment.html", segment=segment)
+
+    assert '<details class="source-verification" open>' in html
+    assert "Original PDF verification" in html
+    assert "authoritative for formulas" in " ".join(html.split())
+    assert "/curator/document/doc_001/source/page/263.png" in html
+
+
+def test_source_page_route_serves_archive_preview(tmp_path, monkeypatch):
+    image_path = tmp_path / "page_0263.png"
+    image_path.write_bytes(b"png")
+    monkeypatch.setattr(
+        archive,
+        "get_source_page_preview_path",
+        lambda doc_id, page_number: str(image_path),
+    )
+
+    response = app.test_client().get(
+        "/curator/document/doc_001/source/page/263.png"
+    )
+
+    assert response.status_code == 200
+    assert response.mimetype == "image/png"
+    assert response.data == b"png"
+
+
 def test_semantic_context_template_renders_recovered_figure():
     segment = {
         "document": {"doc_id": "doc_001", "title": "Handbook"},

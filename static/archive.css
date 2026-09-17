@@ -35,7 +35,7 @@ h1, h2, h3,
 }
 
 .meta-panel, .path-block, details.technical-details,
-.unit-meta, .table-layout, .raw-chunks {
+.unit-meta, .table-layout, .raw-chunks, .source-verification {
     background: var(--archive-panel-soft);
     border-color: var(--archive-border);
 }
@@ -44,6 +44,14 @@ h1, h2, h3,
 .chunk-label, .segment-label, .table-fallback summary,
 .figure-labels summary {
     color: var(--archive-sage);
+}
+
+.source-verification > summary {
+    color: var(--archive-sage);
+}
+
+.source-verification-note {
+    color: var(--archive-muted);
 }
 
 .segment.current,

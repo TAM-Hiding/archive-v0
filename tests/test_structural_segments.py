@@ -1,6 +1,8 @@
 import json
+from pathlib import Path
 
 import archive
+from ingestion import source_preview
 
 
 def test_legacy_symbol_math_delimiters_are_normalized_for_display():
@@ -182,6 +184,63 @@ def test_table_layout_loader_stitches_contiguous_continuation_pages(tmp_path):
     assert [layout["page_number"] for layout in result] == [658, 659]
     assert result[0]["grid"] == [["First-page data"]]
     assert result[1]["grid"] == [["Continued data"]]
+
+
+def test_source_page_preview_is_rendered_once_then_reused(tmp_path, monkeypatch):
+    source_path = tmp_path / "source.pdf"
+    source_path.write_bytes(b"%PDF fake")
+    render_calls = []
+
+    monkeypatch.setattr(
+        archive,
+        "get_ingested_document",
+        lambda doc_id: {
+            "doc_id": doc_id,
+            "doc_root": str(tmp_path),
+            "stored_source_filename": "source.pdf",
+        },
+    )
+
+    def fake_render(pdf_path, page_number, output_path):
+        render_calls.append((pdf_path, page_number, output_path))
+        output = Path(output_path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(b"png")
+        return output
+
+    monkeypatch.setattr(source_preview, "render_pdf_page_preview", fake_render)
+
+    first = archive.get_source_page_preview_path("doc_001", 263)
+    second = archive.get_source_page_preview_path("doc_001", 263)
+
+    assert first == second
+    assert first.endswith("source_previews/page_0263.png")
+    assert len(render_calls) == 1
+    assert archive.get_source_page_preview_path("../doc_001", 263) is None
+    assert archive.get_source_page_preview_path("doc_001", 0) is None
+
+
+def test_source_verification_pages_prefer_table_series_then_equations():
+    table_pages = archive.source_verification_pages(
+        [{"page_number": 659}, {"page_number": 658}],
+        [],
+        warning=False,
+    )
+    equation_pages = archive.source_verification_pages(
+        [],
+        [{
+            "entry": {
+                "layout_hint": "equation",
+                "page_start": 263,
+                "page_end": 264,
+            },
+        }],
+        warning=True,
+    )
+
+    assert table_pages == [658, 659]
+    assert equation_pages == [263, 264]
+    assert archive.source_verification_pages([], [], warning=False) == []
 
 
 def test_structural_segment_uses_verified_source_span(tmp_path, monkeypatch):

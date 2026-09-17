@@ -821,6 +821,10 @@ def list_ingested_documents():
             "doc_id": metadata.get("doc_id", doc_id),
             "title": metadata.get("title", ""),
             "source_filename": metadata.get("source_filename", ""),
+            "stored_source_filename": metadata.get(
+                "stored_source_filename",
+                "",
+            ),
             "category_path": category_path,
             "status": metadata.get("status", ""),
             "chunk_count": metadata.get("chunk_count", 0),
@@ -1210,6 +1214,94 @@ def get_figure_image_path(doc_id, layout_id):
     return image_path if os.path.isfile(image_path) else None
 
 
+def get_source_page_preview_path(doc_id, page_number):
+    """Return a cached PNG rendered from an ingested document's source PDF."""
+    if not doc_id or os.path.basename(doc_id) != doc_id:
+        return None
+    try:
+        page_number = int(page_number)
+    except (TypeError, ValueError):
+        return None
+    if page_number < 1:
+        return None
+
+    document = get_ingested_document(doc_id)
+    if document is None:
+        return None
+
+    stored_filename = document.get("stored_source_filename", "")
+    if (
+        not stored_filename
+        or os.path.basename(stored_filename) != stored_filename
+        or not stored_filename.lower().endswith(".pdf")
+    ):
+        return None
+
+    if not document.get("doc_root"):
+        return None
+    doc_root = os.path.realpath(document["doc_root"])
+    source_path = os.path.realpath(os.path.join(doc_root, stored_filename))
+    try:
+        if os.path.commonpath([doc_root, source_path]) != doc_root:
+            return None
+    except ValueError:
+        return None
+    if not os.path.isfile(source_path):
+        return None
+
+    preview_directory = os.path.join(doc_root, "source_previews")
+    preview_path = os.path.join(
+        preview_directory,
+        f"page_{page_number:04d}.png",
+    )
+    if (
+        os.path.isfile(preview_path)
+        and os.path.getmtime(preview_path) >= os.path.getmtime(source_path)
+    ):
+        return preview_path
+
+    from ingestion.source_preview import render_pdf_page_preview
+
+    try:
+        return str(render_pdf_page_preview(
+            source_path,
+            page_number,
+            preview_path,
+        ))
+    except (OSError, ValueError, RuntimeError):
+        return None
+
+
+def source_verification_pages(table_layouts, context_entries, warning=False):
+    """Choose the smallest useful set of original PDF pages for verification."""
+    table_pages = sorted({
+        page_number
+        for page_number in (
+            value_as_int(layout.get("page_number"))
+            for layout in table_layouts
+        )
+        if page_number is not None and page_number > 0
+    })
+    if table_pages:
+        return table_pages[:8]
+    if not warning:
+        return []
+
+    equation_pages = set()
+    for item in context_entries:
+        entry = item.get("entry", item)
+        if entry.get("layout_hint") != "equation":
+            continue
+        start = value_as_int(entry.get("page_start"))
+        end = value_as_int(entry.get("page_end"))
+        if start is None:
+            continue
+        end = end if end is not None and end >= start else start
+        equation_pages.update(range(start, end + 1))
+
+    return sorted(equation_pages)[:8]
+
+
 def get_structural_segment(doc_id, entry_index):
     structural_document = get_structural_index_for_document(doc_id)
 
@@ -1385,6 +1477,15 @@ def get_structural_segment(doc_id, entry_index):
         item["display_body"] = normalize_pdf_math_glyphs(display_body)
         item["figure_labels"] = removed_labels
 
+    extraction_warning = bool(
+        semantic_unit and semantic_unit.get("extraction_warning")
+    )
+    verification_pages = source_verification_pages(
+        table_layouts,
+        context_entries if context_mode == "semantic_unit" else [current],
+        warning=extraction_warning,
+    )
+
     return {
         "document": document,
         "context_mode": context_mode,
@@ -1394,6 +1495,8 @@ def get_structural_segment(doc_id, entry_index):
         "table_layout": table_layout,
         "table_layouts": table_layouts,
         "figure_layouts": figure_layouts,
+        "source_verification_pages": verification_pages,
+        "source_verification_open": extraction_warning,
         "previous": (
             displayed_items[0]
             if context_mode != "semantic_unit"

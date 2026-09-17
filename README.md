@@ -74,6 +74,12 @@ index, and stores cropped PNG figures under the document's `figure_layouts/`
 directory. Omitting `--pages` scans pages whose extracted text contains a
 figure caption.
 
+Table contexts and equation contexts with suspect extraction expose an
+**Original PDF verification** panel in the web UI. The panel renders source
+pages lazily, caches them under the document's `source_previews/` directory,
+and keeps the original page image authoritative for formulas and layout. No
+rebuild or separate extraction command is required.
+
 ## Project Structure
 
 ```text
@@ -88,11 +94,3 @@ archive-v0/
 ├── requirements.txt       # Python dependencies
 ├── CHANGELOG.md           # Project history
 └── TODO.md                # Planned work
-
-## License
-
-Archive v0 source code is licensed under the [MIT License](LICENSE).
-
-Documents, books, PDFs, datasets, and other third-party materials processed
-or ingested by Archive are not covered by this license and remain subject to
-their respective copyrights and licenses.

@@ -14,7 +14,9 @@ It combines a Flask web interface with a deterministic PDF ingestion pipeline. D
 - Conservative fuzzy term expansion
 - Note creation and editing
 - Folder/category navigation
-- Curator dashboard for notes and ingested documents
+- Curator dashboard for notes and My documents
+- Editable document names and General/Public/Private organization filters
+- Local PDF title detection from metadata or prominent opening-page text
 - Geometry-ordered PDF text extraction using `pdfplumber`, with explicit
   `pypdf` compatibility mode
 - Coordinate-aware ruled-table extraction using `pdfplumber`
@@ -25,6 +27,20 @@ It combines a Flask web interface with a deterministic PDF ingestion pipeline. D
 - Source-document and neighboring-chunk navigation
 - Re-indexing and generated-output management
 - JSON API endpoints for notes, documents, and structural segments
+
+## Document Names and Organization
+
+Open a document in **My documents**, then expand **Name and organization**
+to rename it or assign a Public/Private label. General shows all documents;
+the labels organize content and do not publish it or enforce access permissions.
+Renaming preserves source filenames, document IDs, note IDs, and stored paths.
+Generated search-note titles reflect the current name without re-ingestion.
+
+New PDF imports try a readable title from PDF metadata or prominent text on
+the first five pages, including an edition label when available. Existing
+imports offer **Suggest name from PDF** for review before saving. Detection is
+heuristic and editable; scanned PDFs without extractable text retain their
+filename until you enter a name. No model service or OCR is required.
 
 ## Table Layout Extraction
 

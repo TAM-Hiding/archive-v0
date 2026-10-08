@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 from ingestion.registry import create_document_record, write_metadata
+from ingestion.document_names import suggest_document_title
 from ingestion.extractors import extract_text_from_pdf, save_extracted_text
 from ingestion.cleaners import clean_extracted_text, save_cleaned_text
 from ingestion.chunkers import build_chunks, save_chunks
@@ -82,6 +83,10 @@ def ingest_document(
     structural_index_path = doc_root / "structural_index.json"
 
     # Step 2: extract
+    suggestion = suggest_document_title(stored_source_path)
+    if suggestion:
+        metadata["title"] = suggestion["title"]
+        metadata["title_source"] = suggestion["source"]
     extraction_result = extract_text_from_pdf(stored_source_path)
     save_extracted_text(extracted_text_path, extraction_result["text"])
 

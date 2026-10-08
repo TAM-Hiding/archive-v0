@@ -126,7 +126,7 @@
         {% endif %}
 
         {% if document.chunk_storage_mode == "structural_only" %}
-        <a href="/curator/document/{{ document.doc_id }}/structure" class="button-link">Browse Sections</a>
+        <a href="/curator/document/{{ document.doc_id }}/structure" class="button-link">Browse this document</a>
         {% endif %}
 
     </div>
@@ -141,6 +141,29 @@
         <span class="summary-chip"><strong>Category</strong> {{ document.category_path }}</span>
     </div>
 
+    {% if request.args.get('saved') %}<p class="status-message" role="status">Document details saved.</p>{% endif %}
+    {% if details_error %}<p class="status-message" role="alert">{{ details_error }}</p>{% endif %}
+    <details class="technical-details"{% if suggestion_checked or details_error %} open{% endif %}>
+        <summary>Name and organization</summary>
+        <form class="note-form document-details-form" method="post" action="{{ url_for('curator_document_details', doc_id=document.doc_id) }}">
+            <label class="label" for="document-title">Document name</label>
+            <input id="document-title" name="title" maxlength="300" required
+                   value="{{ suggestion.title if suggestion else document.title }}">
+            <label class="label" for="document-collection">Organize as</label>
+            <select id="document-collection" name="collection">
+                {% for label in ['general', 'public', 'private'] %}
+                <option value="{{ label }}"{% if document.collection|default('general') == label %} selected{% endif %}>{{ label|capitalize }}</option>
+                {% endfor %}
+            </select>
+            <p class="helper">Public and Private are labels for organizing documents.</p>
+            {% if suggestion %}<p class="helper">Suggested from {{ suggestion.source }}. Check the name before saving.</p>
+            {% elif suggestion_checked %}<p class="helper">No reliable title found. You can enter a name yourself.</p>{% endif %}
+            <button class="button-primary" type="submit">Save name and organization</button>
+        </form>
+        <form method="post" action="{{ url_for('curator_document_suggest_name', doc_id=document.doc_id) }}">
+            <button class="button-secondary" type="submit">Suggest name from PDF</button>
+        </form>
+    </details>
     <div class="panel">
         <div class="panel-title">About this document</div>
 

@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
 <head>
-    <title>Curator Documents - The Archive™</title>
+    <title>My documents - The Archive™</title>
     <style>
         body {
             font-family: Arial;
@@ -115,23 +115,33 @@
         {% include "partials/back_menu.html" %}
     </div>
 
-    <h1>Curator - Ingested Documents</h1>
+    <h1>My documents</h1>
     <div class="subtitle">
-        Inspect ingested source records and manage generated output.
+        Browse and organize your saved documents.
     </div>
 
+    <nav class="curator-filters" aria-label="Document collections">
+        {% for label in ['general', 'public', 'private'] %}
+        <a href="{{ url_for('curator_documents', view=label) }}"
+           class="button-secondary{% if view|default('general') == label %} is-active{% endif %}"
+           {% if view|default('general') == label %}aria-current="page"{% endif %}>
+            {{ label|capitalize }}{% if counts is defined %} <span class="filter-count">{{ counts[label] }}</span>{% endif %}
+        </a>
+        {% endfor %}
+    </nav>
+    <p class="action-help">General shows all documents. Public and Private are organization labels.</p>
     {% if documents %}
         {% for doc in documents %}
             <div class="doc-card">
                 <div class="doc-header">
-                    <div>
+                    <div class="doc-actions">
+                        <a href="/curator/document/{{ doc.doc_id }}" class="button-secondary">Open</a>
+                    </div>
+                    <div class="doc-heading">
                         <div class="doc-title">{{ doc.title }}</div>
                         <div class="doc-subtitle">{{ doc.source_filename }}</div>
                     </div>
 
-                    <div class="doc-actions">
-                            <a href="/curator/document/{{ doc.doc_id }}" class="button-secondary">Open</a>
-                    </div>
                 </div>
 
                 <div class="summary-strip">
@@ -178,7 +188,7 @@
             </div>
         {% endfor %}
     {% else %}
-        <div class="empty-state">No ingested documents found.</div>
+        <div class="empty-state">No documents in this view yet.</div>
     {% endif %}
 </div>
 

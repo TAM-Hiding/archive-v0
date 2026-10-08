@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 import json
 import re
+from ingestion.table_captions import NUMBERED_TABLE_CAPTION_PATTERN, is_table_caption
 
 
 PAGE_MARKER_PATTERN = re.compile(r"^--- PAGE (\d+) ---$")
@@ -24,12 +25,7 @@ GLOBAL_CONTENTS_REVERSED_SECTION_PATTERN = re.compile(
 )
 ROMAN_FRONT_MATTER_PAGE_PATTERN = re.compile(r"^[ivxlcdm]{1,8}$")
 
-TABLE_CAPTION_PATTERN = re.compile(
-    r"^\s*Table\s+"
-    r"(?:\d+(?:[.-]\d+)*[A-Za-z]?|[IVXLCDM]+)"
-    r"(?:[.:])?(?:\s+.*)?$",
-    re.IGNORECASE,
-)
+TABLE_CAPTION_PATTERN = NUMBERED_TABLE_CAPTION_PATTERN
 
 RUNNING_HEADER_PATTERNS = [
     re.compile(r"^\d+\s+[A-Z][A-Z0-9\s,&/\-]+$"),
@@ -1251,7 +1247,7 @@ def split_block_at_table_captions(
     caption_indexes = [
         index
         for index, line in enumerate(lines)
-        if TABLE_CAPTION_PATTERN.fullmatch(line.strip())
+        if is_table_caption(line.strip())
     ]
 
     if not caption_indexes:

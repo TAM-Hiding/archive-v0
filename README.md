@@ -96,6 +96,12 @@ pages lazily, caches them under the document's `source_previews/` directory,
 and keeps the original page image authoritative for formulas and layout. No
 rebuild or separate extraction command is required.
 
+Explicit named numeric tables (including the prime/factor tables) are also
+recognized without a numbered `Table 1` caption. Older flattened chunks expose
+original PDF pages immediately, with raw table text collapsed until column
+geometry is recovered. A rebuild is only needed to update their stored table
+classification; viewing the original pages does not require one.
+
 ## Project Structure
 
 ```text

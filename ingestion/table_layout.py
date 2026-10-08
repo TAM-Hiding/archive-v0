@@ -4,6 +4,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any, Iterable
+from ingestion.table_captions import is_table_caption
 
 
 TABLE_CAPTION_SEARCH_PATTERN = re.compile(
@@ -54,6 +55,10 @@ def extract_caption_above_table(page: Any, bbox: Iterable[float]) -> str:
     x0, top, x1, _ = bbox
     region = page.crop((x0, max(0, top - 42), x1, top))
     text = region.extract_text(x_tolerance=2, y_tolerance=3) or ""
+    named_captions = [line.strip() for line in text.splitlines()
+                      if is_table_caption(line.strip())]
+    if named_captions:
+        return named_captions[-1]
     flattened = " ".join(line.strip() for line in text.splitlines() if line.strip())
     matches = list(TABLE_CAPTION_SEARCH_PATTERN.finditer(flattened))
 

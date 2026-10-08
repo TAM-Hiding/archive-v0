@@ -1,0 +1,13 @@
+<p class="source-verification-note">
+    <strong>{{ item.unrecovered_table_caption }}</strong><br>
+    This table’s columns have not been recovered yet.
+    {% if item.entry.page_start in segment.source_verification_pages %}
+    <a href="#source-page-{{ item.entry.page_start }}">Read the original PDF page {{ item.entry.page_start }}</a>.
+    {% else %}
+    <a href="/curator/document/{{ segment.document.doc_id }}/source/page/{{ item.entry.page_start }}.png">Read the original PDF page {{ item.entry.page_start }}</a>.
+    {% endif %}
+</p>
+<details class="raw-chunks">
+    <summary>Raw table text</summary>
+    <div class="preview">{{ rendered_body }}</div>
+</details>

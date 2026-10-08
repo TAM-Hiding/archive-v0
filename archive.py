@@ -5,6 +5,7 @@ import string
 import re
 import difflib
 import hashlib
+from ingestion.table_captions import named_table_caption
 from ingestion.indexer import (
     index_chunks_to_generated_notes,
     index_structural_doc_to_generated_note,
@@ -1298,7 +1299,8 @@ def get_source_page_preview_path(doc_id, page_number):
         return None
 
 
-def source_verification_pages(table_layouts, context_entries, warning=False):
+def source_verification_pages(table_layouts, context_entries, warning=False,
+                              preferred_page=None):
     """Choose the smallest useful set of original PDF pages for verification."""
     table_pages = sorted({
         page_number
@@ -1310,6 +1312,23 @@ def source_verification_pages(table_layouts, context_entries, warning=False):
     })
     if table_pages:
         return table_pages[:8]
+    missing_table_pages = set()
+    for item in context_entries:
+        entry = item.get("entry", item)
+        if not (entry.get("content_type") == "table"
+                or named_table_caption(item.get("body", entry.get("preview", "")))):
+            continue
+        start = value_as_int(entry.get("page_start"))
+        end = value_as_int(entry.get("page_end"))
+        if start is not None and start > 0:
+            end = end if end is not None and end >= start else start
+            missing_table_pages.update(range(start, min(end, start + 7) + 1))
+    if missing_table_pages:
+        pages = sorted(missing_table_pages)
+        if preferred_page in missing_table_pages:
+            pages.remove(preferred_page)
+            pages = [preferred_page] + pages
+        return sorted(pages[:8])
     if not warning:
         return []
 
@@ -1502,6 +1521,11 @@ def get_structural_segment(doc_id, entry_index):
         )
         item["display_body"] = normalize_pdf_math_glyphs(display_body)
         item["figure_labels"] = removed_labels
+        item["unrecovered_table_caption"] = (
+            item["entry"].get("table_caption")
+            or named_table_caption(item["body"])
+            or ("Table" if item["entry"].get("content_type") == "table" else None)
+        ) if not table_layouts else None
 
     extraction_warning = bool(
         semantic_unit and semantic_unit.get("extraction_warning")
@@ -1510,6 +1534,7 @@ def get_structural_segment(doc_id, entry_index):
         table_layouts,
         context_entries if context_mode == "semantic_unit" else [current],
         warning=extraction_warning,
+        preferred_page=value_as_int(current_entry.get("page_start")),
     )
 
     return {
@@ -1522,7 +1547,9 @@ def get_structural_segment(doc_id, entry_index):
         "table_layouts": table_layouts,
         "figure_layouts": figure_layouts,
         "source_verification_pages": verification_pages,
-        "source_verification_open": extraction_warning,
+        "source_verification_open": extraction_warning or any(
+            item and item.get("unrecovered_table_caption") for item in displayed_items
+        ),
         "previous": (
             displayed_items[0]
             if context_mode != "semantic_unit"

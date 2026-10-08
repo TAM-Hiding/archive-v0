@@ -108,7 +108,7 @@
 
         {% if document.mode == "structural_only" %}
             <a href="/curator/document/{{ document.source_doc_id }}" class="button-secondary">Document</a>
-            <a href="/curator/document/{{ document.source_doc_id }}/structure" class="button-link">Browse Sections</a>
+            <a href="/curator/document/{{ document.source_doc_id }}/structure" class="button-link">Browse this document</a>
         {% endif %}
     </div>
 
@@ -130,7 +130,7 @@
     Structural entries: {{ document.chunk_count_estimate }}
     Source file: {{ document.source_filename }}
 
-    Use Browse Sections to navigate the document and open reconstructed context.
+    Use Browse this document to navigate the document and open reconstructed context.
             </div>
         </div>
     {% else %}

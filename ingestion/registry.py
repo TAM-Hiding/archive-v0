@@ -88,6 +88,7 @@ def create_document_record(source_file_path: str | Path, category_path: str) -> 
     metadata = {
         "doc_id": doc_id,
         "title": source_path.stem,
+        "collection": "general",
         "source_filename": source_path.name,
         "stored_source_filename": copied_source_path.name,
         "source_original_path": str(source_path),

@@ -184,7 +184,16 @@ def curator_notes():
 @app.route("/curator/documents")
 def curator_documents():
     documents = archive.list_ingested_documents()
-    return render_template("curator_documents.html", documents=documents)
+    view = request.args.get("view", "general")
+    if view not in {"general", "public", "private"}:
+        view = "general"
+    counts = {"general": len(documents)}
+    counts.update({label: sum(d.get("collection") == label for d in documents)
+                   for label in ("public", "private")})
+    if view != "general":
+        documents = [d for d in documents if d.get("collection") == view]
+    return render_template("curator_documents.html", documents=documents,
+                           view=view, counts=counts)
 
 @app.route("/curator/document/<doc_id>")
 def curator_document(doc_id):
@@ -194,6 +203,31 @@ def curator_document(doc_id):
         return "Document not found.", 404
 
     return render_template("curator_document.html", document=document)
+
+@app.route("/curator/document/<doc_id>/details", methods=["POST"])
+def curator_document_details(doc_id):
+    try:
+        archive.update_document_details(doc_id, request.form.get("title", ""),
+                                        request.form.get("collection", "general"))
+    except FileNotFoundError:
+        return "Document not found.", 404
+    except ValueError as error:
+        return render_template("curator_document.html",
+                               document=archive.get_ingested_document(doc_id),
+                               details_error=str(error)), 400
+    return redirect(url_for("curator_document", doc_id=doc_id, saved=1))
+
+@app.route("/curator/document/<doc_id>/suggest-name", methods=["POST"])
+def curator_document_suggest_name(doc_id):
+    from pathlib import Path
+    from ingestion.document_names import suggest_document_title
+    document = archive.get_ingested_document(doc_id)
+    if document is None:
+        return "Document not found.", 404
+    filename = document.get("stored_source_filename") or "source.pdf"
+    suggestion = suggest_document_title(Path(document["doc_root"]) / Path(filename).name)
+    return render_template("curator_document.html", document=document,
+                           suggestion=suggestion, suggestion_checked=True)
 
 @app.route("/curator/document/<doc_id>/source")
 def curator_document_source(doc_id):

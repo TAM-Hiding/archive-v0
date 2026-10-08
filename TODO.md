@@ -25,8 +25,8 @@
   users can organize notes without entering arbitrary filesystem paths.
 - Add hierarchy-based breadcrumbs across document views now that front matter
   and table-of-contents entries are grouped for navigation.
-- Add a theme customizer after the shared color variables and component styles
-  have stabilized.
+- Work out test palettes with Tomoki before implementing a theme selector;
+  consider both preset palettes and individual background/text color controls.
 - Render extracted table-of-contents items as clickable links to the matching
   section start. Resolve targets from hierarchy and printed-page metadata, with
   a plain-text fallback when no trustworthy structural destination exists.

@@ -309,9 +309,33 @@ a {
 }
 
 .doc-actions .button-secondary {
-    min-width: 5.5rem;
+    min-width: 8rem;
+    min-height: 3rem;
     margin-left: 0;
     color: var(--archive-ink);
+}
+
+.doc-card .doc-header {
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.doc-heading { min-width: 0; overflow-wrap: anywhere; }
+
+.document-details-form {
+    display: grid;
+    gap: 0.6rem;
+    max-width: 42rem;
+    margin-bottom: 1rem;
+}
+
+.document-details-form input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.7rem;
+    border-radius: 6px;
+    font: inherit;
 }
 
 .actions {

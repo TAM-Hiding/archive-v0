@@ -42,6 +42,7 @@ def build_vocabulary(notes):
     
 def load_notes():
     notes = []
+    document_titles = {doc["doc_id"]: doc["title"] for doc in list_ingested_documents()}
 
     for root, dirs, files in os.walk(notes_path):
         for file in files:
@@ -106,6 +107,13 @@ def load_notes():
                         category = " > ".join(category_parts)
 
                     is_generated = category_parts[:1] == ["_generated"]
+                    document_title = document_titles.get(extra_meta.get("source_doc_id"))
+                    if is_generated and document_title:
+                        aliases.append(title.lower())
+                        chunk_index = extra_meta.get("chunk_index")
+                        title = document_title
+                        if chunk_index is not None:
+                            title += f" - chunk {chunk_index}"
                     if is_generated:
                         note_origin = "generated"
                     elif category_parts[:1] == ["_system"]:
@@ -787,7 +795,7 @@ def get_source_document(note, notes):
 
     return {
         "source_doc_id": source_doc_id,
-        "title": note.get("meta", {}).get("source_filename") or note.get("title"),
+        "title": (get_ingested_document(source_doc_id) or {}).get("title") or note.get("title"),
         "current_path": note.get("path"),
         "chunks": source_chunks
     }
@@ -820,6 +828,7 @@ def list_ingested_documents():
         documents.append({
             "doc_id": metadata.get("doc_id", doc_id),
             "title": metadata.get("title", ""),
+            "collection": metadata.get("collection", "general"),
             "source_filename": metadata.get("source_filename", ""),
             "stored_source_filename": metadata.get(
                 "stored_source_filename",
@@ -866,6 +875,23 @@ def get_ingested_document(doc_id):
             return document
 
     return None
+
+def update_document_details(doc_id, title, collection):
+    from datetime import datetime
+    from ingestion.registry import read_metadata, write_metadata
+    document = get_ingested_document(doc_id)
+    if document is None:
+        raise FileNotFoundError("Document not found.")
+    title = title.strip()
+    if not title or len(title) > 300 or any(ord(c) < 32 for c in title):
+        raise ValueError("Enter a document name of 1–300 characters on one line.")
+    if collection not in {"general", "public", "private"}:
+        raise ValueError("Choose General, Public, or Private.")
+    metadata = read_metadata(document["metadata_file"])
+    metadata.update(title=title, collection=collection, title_source="user",
+                    updated_at=datetime.now().isoformat(timespec="seconds"))
+    write_metadata(document["metadata_file"], metadata)
+    return metadata
 
 def get_source_note_for_document(doc_id, notes):
     document = get_ingested_document(doc_id)

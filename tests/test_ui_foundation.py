@@ -29,7 +29,7 @@ def test_document_page_uses_plain_language_actions_and_collapsed_details():
     with app.test_request_context("/"):
         html = render_template("curator_document.html", document=document)
 
-    assert "Browse Sections" in html
+    assert "Browse this document" in html
     assert "Source Overview" in html
     assert "Refresh Search Index" in html
     assert "Remove Generated Notes" in html
@@ -48,7 +48,7 @@ def test_structural_reading_pages_use_shared_archive_theme():
         html = render_template("structural_index.html", document=document)
 
     assert "archive.css" in html
-    assert "Browse Sections" in html
+    assert "Browse this document" in html
     assert 'class="back-menu" data-back-menu' in html
 
 

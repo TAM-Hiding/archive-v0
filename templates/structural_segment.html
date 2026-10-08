@@ -65,7 +65,7 @@
             remains searchable and easier for tools to inspect.
         </p>
         {% for page_number in segment.source_verification_pages %}
-        <figure class="source-page">
+        <figure class="source-page" id="source-page-{{ page_number }}">
             <img
                 src="/curator/document/{{ segment.document.doc_id }}/source/page/{{ page_number }}.png"
                 alt="Original PDF page {{ page_number }}"
@@ -182,7 +182,9 @@
                 {% endif %}
             </div>
             {% if rendered_body %}
-                {% if item.entry.layout_hint == "equation" %}
+                {% if item.unrecovered_table_caption %}
+                {% include "partials/unrecovered_table.html" %}
+                {% elif item.entry.layout_hint == "equation" %}
             <pre class="preview equation-preview">{{ rendered_body }}</pre>
                 {% else %}
             <div class="preview">{{ rendered_body }}</div>
@@ -215,7 +217,9 @@
                 {% endif %}
             </div>
             {% if rendered_body %}
-                {% if item.entry.layout_hint == "equation" %}
+                {% if item.unrecovered_table_caption %}
+                {% include "partials/unrecovered_table.html" %}
+                {% elif item.entry.layout_hint == "equation" %}
             <pre class="preview equation-preview">{{ rendered_body }}</pre>
                 {% else %}
             <div class="preview">{{ rendered_body }}</div>

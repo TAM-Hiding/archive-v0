@@ -105,6 +105,9 @@
 
     <div class="button-row">
         {% include "partials/back_menu.html" %}
+        {% with original_doc_id=document.source_doc_id %}
+            {% include "partials/original_document_link.html" %}
+        {% endwith %}
 
         {% if document.mode == "structural_only" %}
             <a href="/curator/document/{{ document.source_doc_id }}" class="button-secondary">Document</a>

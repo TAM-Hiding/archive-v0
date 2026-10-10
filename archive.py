@@ -826,7 +826,7 @@ def list_ingested_documents():
         category_path = metadata.get("category_path", "").strip("/")
         generated_output_dir = os.path.join(generated_notes_path, *[part for part in category_path.split("/") if part], doc_id)
 
-        documents.append({
+        document = {
             "doc_id": metadata.get("doc_id", doc_id),
             "title": metadata.get("title", ""),
             "collection": metadata.get("collection", "general"),
@@ -863,7 +863,9 @@ def list_ingested_documents():
             "has_generated_output": os.path.isdir(generated_output_dir),
             "updated_at": metadata.get("updated_at", ""),
             "created_at": metadata.get("created_at", "")
-        })
+        }
+        document["has_source_pdf"] = bool(_source_pdf_path_for_document(document))
+        documents.append(document)
 
     documents.sort(key=lambda doc: (doc["updated_at"], doc["doc_id"]), reverse=True)
     return documents
@@ -1098,6 +1100,43 @@ def get_table_layouts_for_entry(document, entry):
     ]
 
 
+def get_table_cell(doc_id, layout_id, row, column):
+    """Retrieve one cell by one-based grid coordinates with source geometry."""
+    if row < 1 or column < 1:
+        raise ValueError("Row and column must be positive, one-based grid coordinates.")
+    if not layout_id or os.path.basename(layout_id) != layout_id:
+        return None
+    document = get_ingested_document(doc_id)
+    if document is None:
+        return None
+    layout_file = document.get("table_layout_file", "")
+    try:
+        with open(layout_file, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    record = next((record for record in manifest.get("layouts", [])
+                   if record.get("layout_id") == layout_id), None)
+    if record is None:
+        return None
+    layout = (_load_table_layout_shard(layout_file, record)
+              if manifest.get("storage_mode") == "sharded" else record)
+    if layout is None:
+        return None
+    grid = layout.get("grid", [])
+    if row > len(grid) or column > len(grid[row - 1]):
+        return None
+    cell = next((cell for cell in layout.get("cells", [])
+                 if cell.get("row_index") == row - 1
+                 and cell.get("column_index") == column - 1), {})
+    return {"doc_id": doc_id, "layout_id": layout_id,
+            "row": row, "column": column, "value": grid[row - 1][column - 1],
+            "caption": layout.get("caption", ""), "page_number": layout.get("page_number"),
+            "cell_bbox": cell.get("bbox"), "source_cell_bbox": cell.get("source_cell_bbox"),
+            "table_bbox": layout.get("bbox"),
+            "recovery_status": layout.get("recovery_status", "extracted")}
+
+
 def _contiguous_table_series(layouts, target_layout_id):
     """Return the same-caption component connected by adjacent PDF pages."""
     target_index = next(
@@ -1241,21 +1280,8 @@ def get_figure_image_path(doc_id, layout_id):
     return image_path if os.path.isfile(image_path) else None
 
 
-def get_source_page_preview_path(doc_id, page_number):
-    """Return a cached PNG rendered from an ingested document's source PDF."""
-    if not doc_id or os.path.basename(doc_id) != doc_id:
-        return None
-    try:
-        page_number = int(page_number)
-    except (TypeError, ValueError):
-        return None
-    if page_number < 1:
-        return None
-
-    document = get_ingested_document(doc_id)
-    if document is None:
-        return None
-
+def _source_pdf_path_for_document(document):
+    """Resolve only the PDF archived inside this document's own directory."""
     stored_filename = document.get("stored_source_filename", "")
     if (
         not stored_filename
@@ -1275,6 +1301,33 @@ def get_source_page_preview_path(doc_id, page_number):
         return None
     if not os.path.isfile(source_path):
         return None
+    return source_path
+
+
+def get_original_pdf_path(doc_id):
+    if not doc_id or os.path.basename(doc_id) != doc_id:
+        return None
+    document = get_ingested_document(doc_id)
+    return _source_pdf_path_for_document(document) if document else None
+
+
+def get_source_page_preview_path(doc_id, page_number):
+    """Return a cached PNG rendered from an ingested document's source PDF."""
+    if not doc_id or os.path.basename(doc_id) != doc_id:
+        return None
+    try:
+        page_number = int(page_number)
+    except (TypeError, ValueError):
+        return None
+    if page_number < 1:
+        return None
+    document = get_ingested_document(doc_id)
+    if document is None:
+        return None
+    source_path = _source_pdf_path_for_document(document)
+    if source_path is None:
+        return None
+    doc_root = os.path.realpath(document["doc_root"])
 
     preview_directory = os.path.join(doc_root, "source_previews")
     preview_path = os.path.join(
@@ -1300,7 +1353,7 @@ def get_source_page_preview_path(doc_id, page_number):
 
 
 def source_verification_pages(table_layouts, context_entries, warning=False,
-                              preferred_page=None):
+                              preferred_page=None, include_general=False):
     """Choose the smallest useful set of original PDF pages for verification."""
     table_pages = sorted({
         page_number
@@ -1330,6 +1383,19 @@ def source_verification_pages(table_layouts, context_entries, warning=False,
             pages = [preferred_page] + pages
         return sorted(pages[:8])
     if not warning:
+        if include_general:
+            # Prefer the requested entry rather than the first page of a long
+            # semantic unit. Provenance remains PDF-page based.
+            selected = next((item for item in context_entries
+                             if value_as_int(item.get("entry", item).get("page_start"))
+                             == preferred_page), context_entries[0] if context_entries else None)
+            if selected:
+                entry = selected.get("entry", selected)
+                start = value_as_int(entry.get("page_start"))
+                end = value_as_int(entry.get("page_end"))
+                if start is not None and start > 0:
+                    end = end if end is not None and end >= start else start
+                    return list(range(start, min(end, start + 7) + 1))
         return []
 
     equation_pages = set()
@@ -1535,6 +1601,7 @@ def get_structural_segment(doc_id, entry_index):
         context_entries if context_mode == "semantic_unit" else [current],
         warning=extraction_warning,
         preferred_page=value_as_int(current_entry.get("page_start")),
+        include_general=document.get("has_source_pdf", True),
     )
 
     return {

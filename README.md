@@ -59,6 +59,36 @@ manifest links matching structural entries by caption and page. The command
 also adds coordinate-derived reading order to table search text. Existing
 metadata and structural-index files are backed up before replacement.
 
+To recover a small range without ingesting the document again:
+
+```bash
+python3 extract_table_layout.py DOCUMENT_ID --pages 31-39
+```
+
+Page numbers refer to the PDF viewer's page count. Selected pages are scanned
+even when an older index classified their tables as prose. Matching captions
+receive table links while entry IDs and source spans remain intact. Other table
+layouts are retained; overwritten table shards are backed up too.
+
+Numeric tables with ruled columns and packed text rows can be split into cells
+when every row aligns completely. Original ruled cells and their text remain in
+the sidecar alongside recovered cell coordinates. Incomplete rows retain the
+original extraction. Values are copied from the PDF, never filled by arithmetic.
+
+An individual cell is available at
+`/api/document/DOCUMENT_ID/table/LAYOUT_ID/cell/ROW/COLUMN`.
+Rows and columns are one-based and include any header row. The response includes
+the value, PDF page, and available source coordinates.
+
+The Handbook pilot has a separate, independent arithmetic check:
+
+```bash
+python3 tools/verify_prime_table_pilot.py /path/to/Machinery-1.pdf
+```
+
+This checks PDF pages 31–39 and reports discrepancies without altering values.
+It preserves the book's printed `P` for 1 as a documented source exception.
+
 Older monolithic table-layout files can be converted without rescanning the
 source PDF:
 
@@ -95,6 +125,12 @@ Table contexts and equation contexts with suspect extraction expose an
 pages lazily, caches them under the document's `source_previews/` directory,
 and keeps the original page image authoritative for formulas and layout. No
 rebuild or separate extraction command is required.
+
+**View original** is available throughout PDF document browsing, structural
+entry cards, generated-note pages, and search results when the archived source
+exists. Entry links open the PDF at the entry's source page. Ordinary prose
+contexts also include a collapsed **Original PDF pages** preview, without
+needing an extraction warning. These controls never modify the source PDF.
 
 Explicit named numeric tables (including the prime/factor tables) are also
 recognized without a numbered `Table 1` caption. Older flattened chunks expose

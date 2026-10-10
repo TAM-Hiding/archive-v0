@@ -553,7 +553,7 @@ def test_semantic_context_opens_original_pdf_for_suspect_equations():
         html = render_template("structural_segment.html", segment=segment)
 
     assert '<details class="source-verification" open>' in html
-    assert "Original PDF verification" in html
+    assert "Original PDF pages" in html
     assert "authoritative for formulas" in " ".join(html.split())
     assert "/curator/document/doc_001/source/page/263.png" in html
 

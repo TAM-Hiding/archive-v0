@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import extract_table_layout as command
 
@@ -83,3 +84,45 @@ def test_extract_document_table_layout_rejects_non_plain_doc_id(tmp_path):
         assert "plain directory name" in str(error)
     else:
         raise AssertionError("expected invalid doc_id to be rejected")
+
+
+def test_targeted_pilot_preserves_other_shards_and_repairs_legacy_entries(tmp_path, monkeypatch):
+    folder = tmp_path / "doc"
+    folder.mkdir()
+    (folder / "source.pdf").write_bytes(b"unchanged source")
+    index = folder / "structural_index.json"
+    caption = "Prime Number and Factor Table for 1 to 1199"
+    index.write_text(json.dumps([
+        {"content_type": "prose", "page_start": 31, "preview": caption + " From 0 100",
+         "source_char_start": 150, "source_char_end": 300, "semantic_unit_id": "stable-unit"},
+        {"content_type": "table", "page_start": 100, "table_layout_id": "old_other"},
+    ]))
+    layout_file = folder / "table_layout.json"
+    command.write_sharded_table_layout_store(layout_file, {"layouts": [
+        {"layout_id": "old_other", "page_number": 100, "grid": [["keep this"]]},
+        {"layout_id": "page_0031_table_01", "page_number": 31, "grid": [["old packed rows"]]},
+    ]})
+    other_before = (folder / "table_layouts" / "old_other.json").read_bytes()
+    metadata = folder / "metadata.json"
+    metadata.write_text(json.dumps({"doc_id": "doc", "stored_source_filename": "source.pdf",
+                                   "structural_index_file": str(index),
+                                   "table_layout_file": str(layout_file)}))
+    def extract(source, page_numbers):
+        assert page_numbers == {31}
+        return [{"layout_id": "page_0031_table_01", "page_number": 31,
+                 "caption": caption, "caption_key": caption.casefold(),
+                 "grid": [["recovered"]], "reading_order_text": "recovered"}]
+    monkeypatch.setattr(command, "extract_pdf_table_layouts", extract)
+    result = command.extract_document_table_layout("doc", tmp_path, page_numbers=[31])
+    assert result["table_layout_count"] == 2
+    assert (folder / "table_layouts" / "old_other.json").read_bytes() == other_before
+    entries = json.loads(index.read_text())
+    assert entries[0]["content_type"] == "table"
+    assert entries[0]["table_layout_id"] == "page_0031_table_01"
+    assert entries[0]["source_char_start"] == 150
+    assert entries[0]["source_char_end"] == 300
+    assert entries[0]["semantic_unit_id"] == "stable-unit"
+    assert entries[1]["table_layout_id"] == "old_other"
+    backup = Path(result["table_shard_backup_directory"]) / "page_0031_table_01.json"
+    assert "old packed rows" in backup.read_text()
+    assert (folder / "source.pdf").read_bytes() == b"unchanged source"

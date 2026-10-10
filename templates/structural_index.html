@@ -24,6 +24,9 @@
     <div class="button-row">
         {% include "partials/back_menu.html" %}
         <a href="/curator/document/{{ document.document.doc_id }}" class="button-secondary">Document</a>
+        {% with original_available=document.document.has_source_pdf, original_doc_id=document.document.doc_id %}
+            {% include "partials/original_document_link.html" %}
+        {% endwith %}
     </div>
 
     <h1>Browse this document</h1>

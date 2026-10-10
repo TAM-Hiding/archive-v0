@@ -86,6 +86,10 @@ def index():
                 highlighted_preview = highlight_text_html(preview, expanded_terms)
 
                 note_display = note.copy()
+                source_doc_id = note.get("meta", {}).get("source_doc_id")
+                note_display["original_available"] = bool(
+                    source_doc_id and archive.get_original_pdf_path(source_doc_id)
+                )
                 note_display["tags_display"] = ", ".join(note["tags"]) if note["tags"] else "—"
                 note_display["aliases_display"] = ", ".join(note["aliases"]) if note["aliases"] else "—"
 
@@ -276,6 +280,13 @@ def curator_document_source_page(doc_id, page_number):
         return "Source page preview not available.", 404
     return send_file(image_path, mimetype="image/png")
 
+@app.route("/curator/document/<doc_id>/original")
+def curator_document_original(doc_id):
+    source_path = archive.get_original_pdf_path(doc_id)
+    if source_path is None:
+        return "Original PDF not available.", 404
+    return send_file(source_path, mimetype="application/pdf", as_attachment=False)
+
 @app.route("/curator/document/<doc_id>/reindex", methods=["GET", "POST"])
 def curator_document_reindex(doc_id):
     document = archive.get_ingested_document(doc_id)
@@ -361,6 +372,16 @@ def api_document_segment(doc_id, entry_index):
 
     return jsonify(segment)
 
+@app.route("/api/document/<doc_id>/table/<layout_id>/cell/<int:row>/<int:column>")
+def api_table_cell(doc_id, layout_id, row, column):
+    try:
+        cell = archive.get_table_cell(doc_id, layout_id, row, column)
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    if cell is None:
+        return jsonify({"error": "Table cell not available."}), 404
+    return jsonify(cell)
+
 @app.route("/api/document/<doc_id>")
 def api_document(doc_id):
     document = get_ingested_document(doc_id)
@@ -381,7 +402,9 @@ def note_page(note_id):
         return "Note not found", 404
 
     note = notes[note_id]
-    return render_template("note.html", note=note)
+    source_doc_id = note.get("meta", {}).get("source_doc_id")
+    return render_template("note.html", note=note, original_available=bool(
+        source_doc_id and archive.get_original_pdf_path(source_doc_id)))
 
 @app.route("/context/<int:note_id>")
 def source_context(note_id):
@@ -410,7 +433,9 @@ def source_document(note_id):
     if document is None:
         return "Source document not available.", 404
 
-    return render_template("source_document.html", document=document)
+    return render_template("source_document.html", document=document,
+                           original_available=bool(archive.get_original_pdf_path(
+                               document["source_doc_id"])))
 
 @app.route("/edit/<int:note_id>", methods=["GET", "POST"])
 def edit_note(note_id):

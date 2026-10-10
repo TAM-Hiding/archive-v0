@@ -47,6 +47,10 @@
         {% include "partials/back_menu.html" %}
         <a href="/curator/document/{{ segment.document.doc_id }}" class="button-secondary">Document</a>
         <a href="/curator/document/{{ segment.document.doc_id }}/structure" class="button-secondary">All Sections</a>
+        {% with original_available=segment.document.has_source_pdf,
+                original_doc_id=segment.document.doc_id, original_page=segment.current.entry.page_start if segment.current else none %}
+            {% include "partials/original_document_link.html" %}
+        {% endwith %}
     </div>
 
     <h1>{% if segment.context_mode == "semantic_unit" %}Semantic Context{% else %}Structural Segment{% endif %}</h1>
@@ -55,7 +59,7 @@
     {% if segment.source_verification_pages %}
     <details class="source-verification"{% if segment.source_verification_open %} open{% endif %}>
         <summary>
-            Original PDF verification —
+            Original PDF pages —
             {{ segment.source_verification_pages|length }}
             page{% if segment.source_verification_pages|length != 1 %}s{% endif %}
         </summary>

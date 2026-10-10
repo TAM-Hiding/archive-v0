@@ -69,6 +69,10 @@
         <div class="top-bar button-row">
             {% include "partials/back_menu.html" %}
             <a href="/edit/{{ note.id }}" class="button-secondary">Edit Note</a>
+            {% with original_doc_id=note.meta.source_doc_id if note.meta is defined else none,
+                    original_page=note.meta.page_start if note.meta is defined else none %}
+                {% include "partials/original_document_link.html" %}
+            {% endwith %}
         </div>
 
         <h1>{{ note.title }}</h1>

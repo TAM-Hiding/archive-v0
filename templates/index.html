@@ -204,6 +204,11 @@
               </div>
 
               <div class="result-actions">
+                {% with original_available=note.original_available,
+                        original_doc_id=note.meta.source_doc_id, original_page=note.meta.page_start,
+                        original_compact=true %}
+                    {% include "partials/original_document_link.html" %}
+                {% endwith %}
                 {% if note.meta.structural_hit %}
                     <a href="{{ url_for('curator_document', doc_id=note.meta.source_doc_id) }}" class="button-secondary button-compact">Document</a>
                     <a href="{{ url_for('curator_document_structure_entry', doc_id=note.meta.source_doc_id, entry_index=note.meta.entry_index) }}" class="button-secondary button-compact">Context</a>

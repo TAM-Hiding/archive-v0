@@ -1,0 +1,4 @@
+{% if original_available %}
+<a href="{{ url_for('curator_document_original', doc_id=original_doc_id) }}{% if original_page and original_page|int > 0 %}#page={{ original_page|int }}{% endif %}"
+   class="button-secondary{% if original_compact|default(false) %} button-compact{% endif %}">View original</a>
+{% endif %}

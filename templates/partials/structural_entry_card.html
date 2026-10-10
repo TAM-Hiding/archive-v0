@@ -26,7 +26,13 @@
             </div>
         </div>
 
-        <a href="/curator/document/{{ document.document.doc_id }}/structure/{{ entry.entry_index }}" class="button-secondary">Open</a>
+        <div class="result-actions">
+            <a href="/curator/document/{{ document.document.doc_id }}/structure/{{ entry.entry_index }}" class="button-secondary">Open</a>
+            {% with original_available=document.document.has_source_pdf,
+                    original_doc_id=document.document.doc_id, original_page=entry.page_start %}
+                {% include "partials/original_document_link.html" %}
+            {% endwith %}
+        </div>
     </div>
 
     {% if entry.content_type == "table" %}

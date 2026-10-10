@@ -111,6 +111,58 @@ def group_words_into_positioned_lines(
     return lines
 
 
+def recover_packed_numeric_rows(page, table, grid):
+    """Split tall ruled cells only when aligned numeric rows are unambiguous.
+
+    Reject wrapped prose, missing cells, and multiple tokens per cell rather
+    than guessing. Existing physical rows with short headers remain intact.
+    Coordinates identify every recovered cell; symbols are copied verbatim.
+    """
+    recovered_grid = []
+    recovered_cells = []
+    expanded = False
+    numeric_token = re.compile(r"(?:[+-]?\d+(?:[.,]\d+)?|P)", re.I)
+    for physical_index, physical_row in enumerate(table.rows):
+        boxes = physical_row.cells
+        if len(boxes) < 3 or any(box is None for box in boxes):
+            return None
+        row_bbox = (min(b[0] for b in boxes), min(b[1] for b in boxes),
+                    max(b[2] for b in boxes), max(b[3] for b in boxes))
+        words = page.crop(row_bbox).extract_words(x_tolerance=2, y_tolerance=2,
+                                                 use_text_flow=False)
+        lines = group_words_into_positioned_lines(words)
+        if len(lines) < 5:
+            logical_rows = [(grid[physical_index], row_bbox[1], row_bbox[3])]
+        else:
+            logical_rows = []
+            for line in lines:
+                values = [None] * len(boxes)
+                for x0, x1, token in line["tokens"]:
+                    if not numeric_token.fullmatch(token):
+                        return None
+                    columns = [i for i, box in enumerate(boxes)
+                               if box[0] <= (x0 + x1) / 2 < box[2]]
+                    if len(columns) != 1 or values[columns[0]] is not None:
+                        return None
+                    values[columns[0]] = token
+                if any(value is None for value in values):
+                    return None
+                logical_rows.append((values, line["top"], line["bottom"]))
+            expanded = True
+        for values, top, bottom in logical_rows:
+            row_index = len(recovered_grid)
+            recovered_grid.append(values)
+            for column_index, (value, box) in enumerate(zip(values, boxes)):
+                recovered_cells.append({
+                    "cell_index": len(recovered_cells) + 1,
+                    "row_index": row_index, "column_index": column_index,
+                    "bbox": _rounded_bbox((box[0], top, box[2], bottom)),
+                    "source_cell_bbox": _rounded_bbox(box),
+                    "text": value or "",
+                })
+    return (recovered_grid, recovered_cells) if expanded else None
+
+
 def extract_page_table_layouts(page: Any, page_number: int) -> list[dict[str, Any]]:
     """Extract non-nested ruled tables and positional text from one PDF page."""
     tables = discard_nested_tables(page.find_tables())
@@ -140,9 +192,13 @@ def extract_page_table_layouts(page: Any, page_number: int) -> list[dict[str, An
             })
 
         grid = table.extract(x_tolerance=2, y_tolerance=3)
+        original_grid, original_cells = grid, cells
+        recovery = recover_packed_numeric_rows(page, table, grid)
+        if recovery:
+            grid, cells = recovery
 
         layout_id = f"page_{page_number:04d}_table_{table_index:02d}"
-        layouts.append({
+        layout = {
             "layout_id": layout_id,
             "page_number": page_number,
             "table_index": table_index,
@@ -157,7 +213,15 @@ def extract_page_table_layouts(page: Any, page_number: int) -> list[dict[str, An
             "reading_order_text": "\n".join(
                 line["text"] for line in positioned_lines if line["text"].strip()
             ),
-        })
+        }
+        if recovery:
+            layout.update({
+                "recovery_method": "ruled_columns_and_text_rows",
+                "recovery_status": "extracted",
+                "ruled_grid": original_grid,
+                "ruled_cells": original_cells,
+            })
+        layouts.append(layout)
 
     return layouts
 
@@ -221,12 +285,13 @@ def match_layout_to_caption(
 def write_sharded_table_layout_store(
     layout_path: str | Path,
     payload: dict[str, Any],
+    preserved_records: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Write one small JSON file per table and a compact manifest."""
     manifest_path = Path(layout_path)
     shard_directory = manifest_path.with_name("table_layouts")
     shard_directory.mkdir(parents=True, exist_ok=True)
-    manifest_layouts: list[dict[str, Any]] = []
+    manifest_layouts: list[dict[str, Any]] = [dict(record) for record in (preserved_records or [])]
 
     for layout in payload.get("layouts", []):
         layout_id = str(layout.get("layout_id", ""))

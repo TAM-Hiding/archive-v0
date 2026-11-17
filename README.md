@@ -152,3 +152,42 @@ archive-v0/
 ├── requirements.txt       # Python dependencies
 ├── CHANGELOG.md           # Project history
 └── TODO.md                # Planned work
+
+## Reproducible verification (WO-002)
+
+The initial tested baseline is Linux with Python 3.12. Runtime dependencies are
+listed in `requirements.txt`; `requirements.lock` pins their transitive versions
+without pytest. Development inputs are in `requirements-dev.in` and their complete
+resolved environment is pinned in `requirements-dev.lock`. Locks are Linux/Python
+3.12 version pins, not cryptographic package hashes or a cross-platform guarantee.
+
+From a disposable checkout, run the same command used in CI:
+
+```bash
+python3.12 -m venv /tmp/archive-test-venv
+/tmp/archive-test-venv/bin/python -m pip install -r requirements-dev.lock
+PYTHON_BIN=/tmp/archive-test-venv/bin/python bash scripts/verify.sh /tmp/archive-test-reports
+```
+
+Use fresh paths for each clean install. Runtime-only installation uses
+`python -m pip install -r requirements.lock`. The wrapper checks dependencies and
+runs all existing tests with JUnit output, copying tracked source (including
+pending tracked edits) into a temporary directory. Stage new verification files
+before using it. Untracked notes, PDFs and local data are excluded. Tests create
+synthetic fixtures under temporary paths; no personal corpus is required. Reports
+contain dependency versions, pip diagnostics and test/JUnit results; CI also retains
+installation diagnostics. GitHub keeps these synthetic-only artifacts for 14 days,
+on success and failure. Uploading evidence cannot override a failed test step.
+
+To refresh locks intentionally, create a fresh Python 3.12 venv, install from
+`requirements-dev.in`, run `python -m pip freeze > requirements-dev.lock`, and
+resolve the runtime-only inputs in another fresh venv with
+`python -m pip install -r requirements.txt` followed by
+`python -m pip freeze > requirements.lock`. Review every version change. Run the
+verification recipe, then repeat a clean install from the new development lock
+and compare `pip freeze` output. Do not refresh dependencies as unrelated cleanup.
+The pip/venv bootstrap itself is supplied by the Python installation.
+
+A green baseline covers the existing tests, not all application safety or real-PDF
+fidelity. Known WO-003/004 defects remain outside this infrastructure change.
+Contributor scope, correction bounds and handoff requirements are in `AGENTS.md`.

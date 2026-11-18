@@ -1,9 +1,9 @@
 # WO-003 — note integrity and filesystem safety
 
 Base: main `c1dd66cb35afe163a6ff7ee24b65552c7d5d0b93` (WO-001 merged).
-PR #45 remains unmerged; its infrastructure is not duplicated here. There is
-no AGENTS.md on this base. Its proposed instructions and the WO-001 standards
-were read and followed. Only Archive note operations, their route errors and
+Initial implementation preceded PR #45 merging. Integration now incorporates
+main `5411fe5093b54d880ad96481dd907baf2507be2e`, including WO-002 infrastructure
+and AGENTS.md. The implementation and regression tests are preserved. Only Archive note operations, their route errors and
 regressions changed.
 
 ## Behavior
@@ -60,10 +60,12 @@ found no blockers and recommended actionable symlink-loop errors. That change
 and regression were included in a bounded follow-up review. Final review and
 candidate CI status are recorded in the PR description.
 
-Hosted CI is unavailable until WO-002 infrastructure is available on this branch.
-PR #45 was rechecked as open/unmerged. This PR neither copies its workflow nor
-claims its earlier green run applies to these changes. Leave draft and re-run
-Actions after incorporating the approved infrastructure; no automatic merge.
+WO-002 is now merged. The existing WO-003 branch incorporates latest main
+without changing application implementation or regression assertions. The actual
+tracked `scripts/verify.sh` is used for integration verification. Candidate SHA,
+executed results, separate integration review and hosted CI outcome are recorded
+in the existing PR #46 description. Historical borrowed-verifier results above
+remain evidence of the initial implementation, not substitute candidate CI.
 
 This is not crash-atomic saving or concurrent-edit conflict detection. As before,
 a failed write can leave an incomplete file, and simultaneous edits can conflict.

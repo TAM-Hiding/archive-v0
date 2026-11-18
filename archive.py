@@ -5,6 +5,10 @@ import string
 import re
 import difflib
 import hashlib
+import uuid
+import stat
+from contextlib import contextmanager
+from pathlib import Path
 from ingestion.table_captions import named_table_caption
 from ingestion.indexer import (
     index_chunks_to_generated_notes,
@@ -1760,60 +1764,105 @@ def generate_note_id(category, title):
     digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
     return f"note_{digest}"
 
+def _note_parts(value):
+    # HTTP form decoding happens before this layer. Reject residual encodings
+    # rather than decoding a second time; Linux categories use '/' only.
+    if "\\" in value or "%" in value or "\x00" in value:
+        raise ValueError("Unsafe note path. Use ordinary nested categories.")
+    parts = value.split("/") if value else []
+    if any(part in ("", ".", "..") for part in parts):
+        raise ValueError("Unsafe note path. Use a category inside the notes folder.")
+    return parts
+
+
+@contextmanager
+def _note_directory(parts, create=False):
+    root = Path(notes_path).resolve()
+    if create:
+        root.mkdir(parents=True, exist_ok=True)
+    try:
+        candidate = root.joinpath(*parts).resolve()
+    except (OSError, RuntimeError) as exc:
+        raise ValueError("Note path cannot be resolved safely.") from exc
+    if not candidate.is_relative_to(root):
+        raise ValueError("Note path must stay inside the notes folder.")
+    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in parts:
+            if create:
+                try:
+                    os.mkdir(part, dir_fd=fd)
+                except FileExistsError:
+                    pass
+            try:
+                child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            except OSError as exc:
+                raise ValueError("Note directories must be real folders, not symlinks.") from exc
+            os.close(fd)
+            fd = child
+        yield fd
+    finally:
+        os.close(fd)
+
+
+def _note_header(title, tags, aliases):
+    if any("\n" in value or "\r" in value for value in (title, tags, aliases)):
+        raise ValueError("Note title, tags and aliases must each be a single line.")
+    aliases_text = ", ".join(dict.fromkeys(a.strip().lower() for a in aliases.split(",") if a.strip()))
+    return f"title: {title}\n", f"tags: {tags}\n", f"aliases: {aliases_text}\n"
+
+
 def save_note(title, tags, body, category, aliases=""):
-    category = category.strip().strip("/")
+    category = category.strip()
+    parts = _note_parts(category)
+    header = _note_header(title, tags, aliases)
     filename = slugify_filename(title)
+    with _note_directory(parts, create=True) as folder:
+        try:
+            fd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o666, dir_fd=folder)
+        except FileExistsError as exc:
+            raise FileExistsError("A note with this filename already exists. Edit that note or choose a different title/category.") from exc
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(header[0])
+            f.write(f"note_id: note_{uuid.uuid4().hex}\n")
+            f.writelines(header[1:])
+            f.write("\n" + body.strip() + "\n")
+    return os.path.join(notes_path, *parts, filename)
 
-    folder_path = os.path.join(notes_path, category) if category else notes_path
-    os.makedirs(folder_path, exist_ok=True)
-
-    full_path = os.path.join(folder_path, filename)
-
-    # normalize aliases
-    alias_list = [a.strip().lower() for a in aliases.split(",") if a.strip()]
-    seen = set()
-    cleaned_aliases = []
-
-    for alias in alias_list:
-        if alias not in seen:
-            seen.add(alias)
-            cleaned_aliases.append(alias)
-
-    aliases_text = ", ".join(cleaned_aliases)
-    
-    note_id = generate_note_id(category, title)
-
-    with open(full_path, "w") as f:
-        f.write(f"title: {title}\n")
-        f.write(f"note_id: {note_id}\n")
-        f.write(f"tags: {tags}\n")
-        f.write(f"aliases: {aliases_text}\n")
-        f.write("\n")
-        f.write(body.strip() + "\n")
-
-    return full_path
 
 def update_note(path, title, tags, body, aliases=""):
-    # normalize aliases
-    alias_list = [a.strip().lower() for a in aliases.split(",") if a.strip()]
-    seen = set()
-    cleaned_aliases = []
-
-    for alias in alias_list:
-        if alias not in seen:
-            seen.add(alias)
-            cleaned_aliases.append(alias)
-
-    aliases_text = ", ".join(cleaned_aliases)
-    
-    with open(path, "w") as f:
-        f.write(f"title: {title}\n")
-        f.write(f"tags: {tags}\n")
-        f.write(f"aliases: {aliases_text}\n")
-        f.write("\n")
-        f.write(body.strip() + "\n")
-
+    header = _note_header(title, tags, aliases)
+    root = os.path.abspath(notes_path)
+    raw = os.fspath(path)
+    # Reject traversal before abspath can collapse it.
+    if ".." in raw.split("/") or "\\" in raw or "%" in raw or "\x00" in raw:
+        raise ValueError("Unsafe note path.")
+    absolute = os.path.abspath(raw)
+    if os.path.commonpath([root, absolute]) != root:
+        raise ValueError("Note path must stay inside the notes folder.")
+    parts = _note_parts(os.path.relpath(absolute, root))
+    with _note_directory(parts[:-1]) as folder:
+        try:
+            fd = os.open(parts[-1], os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=folder)
+        except OSError as exc:
+            raise ValueError("Note must be an existing regular file inside the notes folder.") from exc
+        with os.fdopen(fd, "r+", encoding="utf-8") as f:
+            info = os.fstat(f.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                raise ValueError("Editing symlinks, hard links or special files is not supported.")
+            preserved = []
+            for line in f:
+                if not line.strip() or ":" not in line:
+                    break
+                key = line.split(":", 1)[0].strip().lower()
+                if key not in ("title", "tags", "tag", "aliases", "alias"):
+                    preserved.append(line if line.endswith("\n") else line + "\n")
+            content = "".join(header) + "".join(preserved) + "\n" + body.strip() + "\n"
+            f.seek(0)
+            f.write(content)
+            f.truncate()
     return path
+
 
 def build_folder_tree():
     tree = {}

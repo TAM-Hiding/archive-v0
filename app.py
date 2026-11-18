@@ -456,13 +456,16 @@ def edit_note(note_id):
         if not title or not body:
             return "Title and body are required.", 400
 
-        archive.update_note(
-            note["path"],
-            title,
-            tags,
-            body,
-            aliases
-        )
+        try:
+            archive.update_note(
+                note["path"],
+                title,
+                tags,
+                body,
+                aliases
+            )
+        except ValueError as exc:
+            return str(exc), 400
 
         refresh_archive()
 
@@ -525,7 +528,12 @@ def add_note():
         if not title or not body:
             return "Title and body are required.", 400
 
-        saved_path = archive.save_note(title, tags, body, category, aliases)
+        try:
+            saved_path = archive.save_note(title, tags, body, category, aliases)
+        except FileExistsError:
+            return "A note with this filename already exists. Go back and choose a different title/category, or edit the existing note.", 409
+        except ValueError as exc:
+            return str(exc), 400
 
         # reload archive
         notes = archive.load_notes()
